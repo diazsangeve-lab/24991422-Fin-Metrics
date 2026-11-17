@@ -18,8 +18,8 @@ gc() # garbage collection, which hands memory back to the operating system after
 ```
 
     ##          used (Mb) gc trigger (Mb) limit (Mb) max used (Mb)
-    ## Ncells 501226 26.8    1074154 57.4         NA   715840 38.3
-    ## Vcells 966709  7.4    8388608 64.0      16384  2011380 15.4
+    ## Ncells 502242 26.9    1077057 57.6         NA   715840 38.3
+    ## Vcells 981085  7.5    8388608 64.0      16384  2011380 15.4
 
 ``` r
 library(tidyverse) # load the tidyverse for data wrangling and plotting
@@ -49,6 +49,9 @@ into the `data` folder.
 ``` r
 if(!require("pacman")) install.packages("pacman") # make sure the package loader itself is installed
 pacman::p_load(tidyverse, lubridate, xts, tbl2xts, PerformanceAnalytics, RcppRoll, fmxdat, rmsfuns, glue, gt, patchwork) # load the core packages that every question relies on, with xts attached because fmxdat::Safe_TE calls its functions directly
+Needed <- c("quadprog", "Rsolnp", "Matrix", "ggdist", "treemapify", "geomtextpath", "circlize", "ggrepel", "ggridges", "sandwich", "lmtest", "rugarch", "rmgarch") # packages that the functions only ever call with ::, so they are installed but not attached
+Missing <- setdiff(Needed, rownames(installed.packages())) # the ones not yet installed on this machine
+if(length(Missing) > 0) install.packages(Missing) # install only those
 options(dplyr.summarise.inform = F) # stop summarise from printing a grouping message every time it runs
 options(scipen = 999) # show numbers in full instead of scientific notation
 ```
@@ -1422,7 +1425,7 @@ Strat_Facts <- Size_Strat %>% mutate(Key = paste(State, Regime, Name)) # a key f
 Size_Strat %>%
     mutate(State = recode(State, "Market return" = "Capped SWIX return", SAVIUSD = "Rand volatility (SAVIUSD)", VIX = "US implied volatility (VIX)")) %>% # readable panel names
     Plot_Size_Slopes(Title = "Size Indexes in Calm and Stressed Regimes", # slopes from the bottom to the top quintile of each state
-                     Subtitle = "Small caps lose least when the market falls but are the most exposed to a volatile rand", # the main message
+                     Subtitle = "Small caps lose least when the market falls but suffer the largest losses when the rand is volatile", # the main message
                      Caption = "Note:\nAnnualised return and volatility of monthly returns in the bottom and top quintile months of each state variable, from 2015. Calculation own.") # the note under the plot
 ```
 
@@ -1475,15 +1478,672 @@ should not be taken at face value.
 
 # Question 3, Portfolio Return Comparison
 
+## Approach
+
+This question prepares a short slide deck for a portfolio manager who
+will speak at a conference and wants to make the case for ABC Fund using
+returns alone. The audience is not quantitative, so every slide carries
+one message in its headline, the figures avoid jargon, and the speaker
+notes explain each figure in plain language. The deck is stored as
+`Questions/Question3/Question3.pptx` and is knitted from `Question3.Rmd`
+with a reference template that sets slide sized fonts.
+
+The manager suggested four themes, namely how high the typical rolling
+beta of active managers is, how different ABC Fund is in what drives its
+returns, how it has performed relative to peers over time, and whether
+it does well when market dispersion is high. Each theme is treated as a
+claim to be tested. Where the evidence supports the claim, the deck
+shows it plainly, and where it supports the claim only under a
+particular framing, the deck says so, since a sceptical audience at a
+conference will probe exactly those points.
+
 ``` r
 Active_Manager_Peers <- read_rds("data/Active_Managers.rds") # monthly returns for the active manager peer group
 ABC_Fund <- read_rds("data/ABC_Fund.rds") # monthly returns for the ABC fund
+BM_Monthly <- Idx_Daily %>% filter(Tickers == "J433") %>% select(date, Name, Returns) %>% Monthly_Returns_Calc() %>% transmute(date = lubridate::ceiling_date(date, "month") - 1, YM, BM = Returns) # monthly Capped SWIX returns, dated at the calendar month end like the fund returns
+Q3_End <- max(ABC_Fund$date) # the last month that the fund and its peers cover
+Univ <- Fund_Universe_Prep(Active_Manager_Peers, ABC_Fund, BM_Monthly, Fund_Label = "ABC Fund", End_Date = Q3_End) # peers, the fund and the benchmark return of each month in one data frame
 ```
 
+The analysis combines three sources. The peer group contains 247 South
+African active managers from November 2005, including funds that later
+closed, which guards against survivorship bias. ABC Fund’s returns start
+in July 2012, and the Capped SWIX benchmark, built from the daily index
+returns, starts in January 2015. Every comparison with the benchmark
+therefore runs from January 2015 to October 2025, the last month of fund
+data, and rolling windows only use consecutive months, since two peer
+funds have gaps in their histories. One peer, X102, has returns
+identical to ABC Fund in every one of its months, so it is ABC Fund
+listed under another name and is removed from the peer group, since
+comparing the fund with a copy of itself would understate how far it
+stands apart.
+
+## Standing Against the Peer Group
+
+The opening slide summarises where ABC Fund stands on six measures at
+once. Each measure is turned into the share of peers the fund beats,
+with lower volatility, drawdown and beta counted as better, so that very
+different statistics can be read on one scale.
+
+``` r
+Q3_Stats <- Fund_Stats_Calc(Univ, Min_Months = 36) # return, risk and exposure statistics for every fund with at least three years of returns since 2015
+Q3_Fund <- Q3_Stats %>% filter(Group == "ABC Fund") # the fund's own statistics
+Q3_Med <- Q3_Stats %>% filter(Group == "Peer") %>% summarise(across(c(Ret, Excess, Vol, Beta, Alpha, R2, MaxDD, IR), median)) # the typical peer
+Plot_Peer_Scorecard(Q3_Stats, Fund_Label = "ABC Fund", # the scorecard of percentile standings
+                    Title = glue::glue("ABC Fund Against {sum(Q3_Stats$Group == 'Peer')} Peers, 2015 to 2025"), # the plot title
+                    Subtitle = "ABC Fund ranks in the top fifth of the peer group on return and on risk at the same time", # the main message
+                    Caption = "Note:\nPeers with at least three years of returns since 2015. Lower volatility, drawdown and beta count as better. Calculation own.") # the note under the plot
+```
+
+![](README_files/figure-markdown_github/q3_scorecard-1.png)
+
+ABC Fund returned 11.9 percent a year against 8.2 percent for the median
+peer, and 3.0 percent a year above the benchmark, while the median peer
+lagged it by 0.9 percent. It did so with lower volatility, at 11.1
+percent against 13.2 percent, and a maximum drawdown of 13.7 percent
+against 25.3 percent. Few funds combine a higher return with a lower
+risk, so this profile is the foundation of the case.
+
+## Rolling Beta Across the Industry
+
+The manager asked how high the typical rolling three year beta of active
+managers is, and suggested overlaying boxplots on a scatter. Each grey
+point below is one peer’s beta to the Capped SWIX over the preceding 36
+months in one month, the boxes summarise the spread of peers in each
+year, and ABC Fund’s average rolling beta is drawn across the years. The
+first year is dropped, since it contains only one month of full windows.
+
+``` r
+Q3_Roll_Beta <- Roll_Beta_Calc(Univ, NSel = 36) # rolling three year betas of every fund, using consecutive months only
+Beta_Range <- Q3_Roll_Beta %>% filter(Group == "Peer", lubridate::year(date) >= 2019) %>% group_by(Year = lubridate::year(date)) %>% summarise(Med = median(Beta)) %>% pull(Med) %>% range() # the range of the typical peer's yearly beta since 2019
+Beta_Latest <- Q3_Roll_Beta %>% filter(date == max(date)) %>% summarise(Peer = median(Beta[Group == "Peer"]), Fund = Beta[Group == "ABC Fund"]) # the latest rolling betas
+Plot_Roll_Beta_Box(Q3_Roll_Beta, Fund_Label = "ABC Fund", Min_Months = 6, # boxplots of peer betas over the individual fund points
+                   Title = "Rolling 3 Year Beta to the Capped SWIX", # the plot title
+                   Subtitle = "The typical active manager carries a beta close to one, while ABC Fund's beta has drifted down to the bottom of the range", # the main message
+                   Caption = "Note:\nEach grey dot is one peer fund's beta over the preceding three years in one month. Boxes span the middle half of peers. Calculation own.") # the note under the plot
+```
+
+![](README_files/figure-markdown_github/q3_beta_box-1.png)
+
+Since 2019 the median peer’s rolling beta has stayed between 0.79 and
+0.89, so most of what clients pay active fees for is exposure to the
+market that an index fund provides at a fraction of the cost. ABC Fund’s
+rolling beta stood at 0.40 in October 2025, against 0.76 for the median
+peer, and it has sat below the peer interquartile range in every year
+since 2020.
+
+## Return Beyond the Market
+
+Beta alone does not show whether a fund offers something other than the
+market, since a low beta fund could simply hold cash. The scatter
+therefore places every fund’s full-sample beta against its alpha, the
+annualised return left after removing its market exposure.
+
+``` r
+Plot_Beta_Alpha(Q3_Stats, Fund_Label = "ABC Fund", # every fund's beta against its alpha
+                Title = "Market Beta and Alpha, 2015 to 2025", # the plot title
+                Subtitle = "ABC Fund sits alone in the corner of low market exposure and high return of its own", # the main message
+                Caption = "Note:\nAlpha is the annualised return left after removing each fund's market exposure, from a regression on the Capped SWIX. Calculation own.") # the note under the plot
+```
+
+![](README_files/figure-markdown_github/q3_beta_alpha-1.png)
+
+ABC Fund’s alpha of 6.7 percent a year compares with 0.9 percent for the
+median peer, and only 2 other funds reach an alpha within half a
+percentage point of it, each with a beta of at least 0.73 and volatility
+of at least 19.7 percent. The fund’s lower market exposure has therefore
+not come at the cost of return, which is the most direct answer to the
+manager’s question about offering something other than market beta.
+
+## What Drives the Returns
+
+The manager also wanted to know how different ABC Fund is in what drives
+its returns. Each fund’s monthly return variance is split into three
+parts. The first is the share explained by the Capped SWIX, the second
+is the extra share explained by the median non-market return of the
+other peers, which captures the bets the industry makes in common, and
+the remainder is unique to the fund. The peer median leaves each fund
+out of its own comparison, and funds need five years of returns for a
+stable split.
+
+``` r
+Q3_Drivers <- Return_Drivers_Calc(Univ, Min_Months = 60) # the split of return variance into market, shared and unique parts
+Drv_Fund <- Q3_Drivers %>% filter(Group == "ABC Fund") # the fund's split
+Drv_Peer <- Q3_Drivers %>% filter(Group == "Peer") %>% summarise(across(c(Market, Shared, Unique), median)) # the typical peer's split
+Plot_Return_Drivers(Q3_Drivers, Fund_Label = "ABC Fund", # the sorted barcode of return drivers
+                    Title = "What Drives Each Fund's Returns, 2015 to 2025", # the plot title
+                    Subtitle = "ABC Fund is among the least market driven funds, with more than twice the typical share of return of its own", # the main message
+                    Caption = "Note:\nShares of monthly return variance explained by the Capped SWIX, then by the median non-market return of the other peers. Calculation own.") # the note under the plot
+```
+
+![](README_files/figure-markdown_github/q3_drivers-1.png)
+
+The market explains 81 percent of the typical peer’s return variance,
+against 55 percent for ABC Fund, and the share unique to ABC Fund is 29
+percent against 12 percent. One result tempers the story, however. ABC
+Fund’s non-market returns move with the industry’s common bets more than
+the typical peer’s do, with a shared share of 16 percent against 6
+percent. Its difference from the industry therefore comes mainly from
+taking less market risk, and the deck advises the manager to describe
+the fund as independent of the market, since describing it as contrarian
+to other managers would not survive scrutiny.
+
+## Relative Performance Over Time
+
+For the illustration of relative performance over time, the deck
+combines two views. The top panel places ABC Fund’s rolling three year
+return inside the bands formed by the middle half and the middle 90
+percent of peers, with the benchmark for reference. The strip underneath
+shows the share of peers the fund beat in each calendar year, coloured
+by quartile, so that an audience can read its consistency at a glance.
+
+``` r
+Q3_Pct <- Peer_Percentile_Calc(Univ, BM_Monthly %>% filter(date <= Q3_End), Fund_Label = "ABC Fund", NSel = 36) # rolling three year returns in peer percentile bands
+Q3_Cal <- Calendar_Rank_Calc(Univ, Fund_Label = "ABC Fund") # the fund's calendar year ranks against the peers open for the whole year
+Plot_Peer_Fan(Q3_Pct, Q3_Cal, Fund_Label = "ABC Fund", # the peer fan with the calendar year strip
+              Title = "Rolling 3 Year Returns Against the Peer Group", # the plot title
+              Subtitle = "ABC Fund has spent most of its history in the top half, and led clearly through the Covid period", # the main message
+              Caption = "Note:\nBands span the middle half and middle 90 percent of peers. Tiles give the percentage of peers beaten each year.\n* Year to October 2025. Calculation own.") # the note under the plot
+```
+
+![](README_files/figure-markdown_github/q3_fan-1.png)
+
+ABC Fund finished in the top half of the peer group in 10 of the 13
+calendar years since 2013, and in the top quartile in 6. In 2020 it beat
+every one of the 138 peers open for the whole year. Its rolling three
+year return sat above the peer interquartile range for most of 2020 to
+2022, when it held up far better through the Covid crash. In the strong
+market of 2025 its low beta has held it back, and it ranks below the
+median for the year to October. The deck presents this openly, since a
+lower beta fund will lag in sharp rallies by design.
+
+## Market Dispersion and Performance
+
+The final claim is that ABC Fund performs well when market dispersion is
+high. Dispersion is measured as the weighted cross-sectional standard
+deviation of Capped SWIX constituent returns in each month, using index
+weights from the previous month end and winsorising daily stock returns
+at 25 percent. This extends the dispersion measure of Question 1 back to
+2015 by building it from the monthly constituent weights and daily stock
+returns.
+
+The claim is tested in two ways, because the answer depends on the
+framing. Month by month, ABC Fund’s raw return above the benchmark has
+almost no relationship with dispersion. High dispersion months are often
+strong rising markets, in which a fund with a beta near one half lags by
+construction. Removing each fund’s market exposure, and measuring over
+12 month windows that match how clients judge performance, isolates the
+stock selection the manager has in mind.
+
+``` r
+Q3_Disp <- Market_Dispersion_Calc(Monthly_Constituents %>% filter(Fund == "CappedSWIX"), Stock_Returns, Ret_Cap = 0.25) # monthly market dispersion from 2015
+Q3_DA <- Dispersion_Alpha_Calc(Univ, Q3_Disp, Fund_Label = "ABC Fund", NSel = 12) # trailing 12 month dispersion against trailing 12 month alpha for the fund and the typical peer
+DA_Terc <- Q3_DA %>% group_by(Tercile) %>% summarise(Fund = mean(Fund_Alpha), Peer = mean(Peer_Alpha), Hit = mean(Fund_Alpha > Peer_Alpha)) # averages in each third of windows
+NW_Fund <- NW_Slope_Test(Q3_DA, "Fund_Alpha", "Disp_Roll", Lag = 12) # does the fund's alpha rise with dispersion
+NW_Gap <- NW_Slope_Test(Q3_DA %>% mutate(Gap = Fund_Alpha - Peer_Alpha), "Gap", "Disp_Roll", Lag = 12) # does the fund's lead over the typical peer rise with dispersion
+Monthly_Cor <- Univ %>% filter(Group == "ABC Fund", !is.na(BM)) %>% inner_join(Q3_Disp %>% select(YM, Disp), by = "YM") %>% summarise(Cor = cor(Returns - BM, Disp)) %>% pull(Cor) # the raw monthly relationship
+Plot_Dispersion_Alpha(Q3_DA, Fund_Label = "ABC Fund", # dispersion against trailing alpha
+                      Title = "Market Dispersion and 12 Month Alpha", # the plot title
+                      Subtitle = "Once market exposure is removed, ABC Fund's lead over the typical peer widens as stocks diverge", # the main message
+                      Caption = "Note:\nDispersion is the weighted spread of Capped SWIX constituent returns each month. Alpha removes each fund's market exposure. Calculation own.") # the note under the plot
+```
+
+![](README_files/figure-markdown_github/q3_dispersion-1.png)
+
+The monthly correlation between ABC Fund’s raw excess return and
+dispersion is only -0.07, so the claim does not hold in its simplest
+form. Over 12 month windows and after removing market exposure, the
+picture changes. ABC Fund’s alpha rises with dispersion, with a slope of
+3.40 and a p-value of 0.004 using Newey-West standard errors with 12
+lags, which allow for the overlap between windows. Its lead over the
+typical peer also widens significantly, with a p-value of 0.010. In the
+most dispersed third of windows, ABC Fund’s 12 month alpha averaged 11.3
+percent against 1.9 percent for the typical peer, and it was ahead in
+100 percent of those windows. The deck therefore supports the manager’s
+claim in this framing, and the speaker notes give the safe wording, that
+high dispersion has rewarded the fund’s stock selection over a year once
+its lower market exposure is allowed for.
+
+## Conclusion to Question 3
+
+The evidence gives the manager a strong and honest case. The typical
+active manager delivers mostly market beta, with a median rolling beta
+of between 0.79 and 0.89 since 2019, while ABC Fund has earned a higher
+return than most peers with roughly half the market exposure, lower
+volatility and shallower drawdowns. Its returns depend far less on the
+market than those of almost any peer, and it has finished in the top
+half of the peer group in most years. The dispersion claim holds once
+performance is measured over a year and adjusted for market exposure,
+but not in raw monthly returns, and the description of the fund as
+contrarian to other managers is the weakest part of the story. The deck
+closes by advising the manager to lead with independence from the market
+and the risk record, to frame dispersion carefully, and to acknowledge
+openly that a lower beta fund will lag in sharp rallies.
+
 # Question 4, Portfolio Construction
+
+## Approach
+
+This question builds a Global Balanced Index Fund from traded indexes
+under a mandate with nine conditions. The fund must be long only, use a
+look-back of at least ten years for any mean or covariance estimate,
+hold no asset with less than five years of returns, rebalance quarterly,
+and keep bonds and credit at or below 25 percent, equities at or below
+75 percent, commodities at or below 15 percent, any single asset at or
+below 35 percent and offshore exposure at or below 60 percent. The
+analysis uses monthly returns and estimates the covariance matrix from
+data after 2010, as the brief instructs.
+
+The question invites several angles, so the analysis is built as a
+sequence. It first defines the universe and checks which assets the five
+year rule allows, then builds the bond indexes that the brief asks for
+from yields, and studies how the assets move together. It then
+constructs four portfolios that all satisfy every condition of the
+mandate, namely a constrained equal weight baseline, minimum variance,
+constrained risk parity and maximum Sharpe ratio, and compares them
+through the efficient frontier, the split between capital and risk, how
+hard each leans on the mandate, and an out-of-sample backtest from 2020.
+It closes with a recommendation and robustness checks. Each figure uses
+a chart type not used earlier in this repository, drawn from the R Graph
+Gallery, including a timeline, labels written along lines, a chord
+diagram, a mirrored stream, a treemap, a circular barplot, rainclouds, a
+bump chart and a radar chart.
+
+Two data points shape the design. The brief mentions description files
+that are not in the data folder, so the universe is built from the files
+named in the brief’s code. There is also no exchange rate in the data,
+so offshore assets are measured in dollars and local assets in rand. The
+backtest therefore reflects a fund whose offshore holdings are currency
+hedged, ignoring the cost of hedging, which is stated wherever it
+matters.
 
 ``` r
 MSCI <- read_rds("data/MSCI_Indexes.rds") # total return indexes for the MSCI global equity indexes
 Bond_Yields <- read_rds("data/Global_Bond_Yields.rds") # ten year government bond yields, which still need to be turned into a return series
 LCL_Yield_Proxies <- read_rds("data/Monthly_LCL_Yield_Indexes.rds") # monthly returns for the local bond, inflation linked bond and listed property indexes
 ```
+
+## The Investable Universe
+
+The universe combines four offshore regional equity indexes and United
+States real estate, three ten year government bond indexes built from
+yields, a broad commodity index and gold, the local large and mid cap
+indexes with two local factor indexes, and the local bond, inflation
+linked bond and listed property indexes. Regional equity indexes are
+preferred to the all country index, since holding both would double
+count the same shares. Listed property counts towards the equity limit,
+since it trades as equity, and inflation linked bonds count towards the
+bond limit. Of the three local factor indexes, low volatility only
+starts in 2024, so the five year rule rules it out and momentum and
+value are chosen.
+
+``` r
+Q4_Meta <- tribble(~Asset, ~Source, ~Source_Name, ~Class, ~Region, # the universe, each asset's source, asset class and region
+                   "US equity", "MSCI", "MSCI_USA", "Equity", "Global",
+                   "Europe equity", "MSCI", "MSCI_EU", "Equity", "Global",
+                   "Japan equity", "MSCI", "MSCI_Jap", "Equity", "Global",
+                   "EM equity", "MSCI", "MSCI_EM", "Equity", "Global",
+                   "US REITs", "MSCI", "MSCI_USREIT", "Equity", "Global",
+                   "US 10Yr bond", "Bonds", "US_10Yr", "Bonds", "Global",
+                   "Euro 10Yr bond", "Bonds", "EURO_10Yr", "Bonds", "Global",
+                   "UK 10Yr bond", "Bonds", "UK_10Yr", "Bonds", "Global",
+                   "Commodities", "Commods", "Bcom_Index", "Commodity", "Global",
+                   "Gold", "Commods", "Gold", "Commodity", "Global",
+                   "SA large caps", "Local", "Top 40", "Equity", "Local",
+                   "SA mid caps", "Local", "MidCaps", "Equity", "Local",
+                   "SA momentum", "Local", "Mom", "Equity", "Local",
+                   "SA value", "Local", "Val", "Equity", "Local",
+                   "SA bonds", "LCL", "FTSE/JSE All Bond", "Bonds", "Local",
+                   "SA inflation-linked", "LCL", "FTSE/JSE SA Inflation-Linked Government Bonds", "Bonds", "Local",
+                   "SA property", "LCL", "FTSE/JSE SA Listed Property", "Equity", "Local")
+Bond_Rets <- Bond_TRI_Calc(Bond_Yields, Bond_Sel = c("US_10Yr", "EURO_10Yr", "UK_10Yr"), Maturity = 10) # monthly bond returns built from yields, explained in the next section
+Q4_End <- lubridate::ymd(20260930) # the last month in the data
+Asset_Rets <- Asset_Returns_Build(Q4_Meta, MSCI, Commods, Bond_Rets, Idx_Daily, LCL_Yield_Proxies) %>% filter(date <= Q4_End) # monthly returns for every asset
+Rebal_Dates <- seq(lubridate::ymd(20200101), lubridate::ymd(20260701), by = "3 months") - 1 # quarter ends from December 2019, the first date with ten years of data after 2010
+Q4_Pal <- Q4_Palettes(Q4_Meta) # colours for assets, families and portfolio rules
+Lvl_Start <- Idx_Daily %>% filter(Tickers == "STXLVLJ433") %>% pull(date) %>% min() # the first day of the local low volatility index
+Excluded <- tibble(Asset = "SA low volatility", Start = Lvl_Start, End = Q4_End, Reason = "Excluded, under five years of returns") # the factor index the five year rule removes
+Plot_Universe_Timeline(Asset_Rets, Q4_Meta, Q4_Pal, Excluded = Excluded, Est_Start = lubridate::ymd(20100101), Rebal_Dates = Rebal_Dates, Min_Months = 60, # the data history of every asset
+                       Title = "The Investable Universe Through Time", # the plot title
+                       Subtitle = "Local equity indexes only become eligible from 2020 onwards, while the local low volatility index never qualifies", # the main message
+                       Caption = "Note:\nFaded bars show each asset's full history and bold bars the period in which the five year rule allows it to be held. Circles mark the month it qualifies. Calculation own.") # the note under the plot
+```
+
+![](README_files/figure-markdown_github/q4_universe-1.png)
+
+The timeline shows why the backtest starts at the end of 2019. A
+look-back of at least ten years on data after 2010 first exists in
+December 2019, and the local large and mid cap indexes, whose returns
+begin in January 2015, qualify on that same date. Local momentum
+qualifies in March 2022 and local value in March 2023, so the universe
+grows from 15 to 17 assets over the backtest. For assets with less than
+ten years of history, the estimation window is still the full window
+from 2010, and each pair’s correlation is estimated over the months both
+assets have returns.
+
+## Building Bond Indexes From Yields
+
+The brief provides ten year government bond yields, not returns, so a
+total return index must be built first. Each month the index is assumed
+to buy a ten year par bond, whose coupon equals that month’s yield. A
+month later the bond has nine years and eleven months left and is
+repriced at the new yield, and its return is the price change plus a
+month of coupon income. This captures both the income from a bond and
+the capital loss when yields rise, and the full repricing also captures
+convexity, which a duration approximation would miss when yields move
+sharply.
+
+``` r
+Bond_Facts <- Bond_Rets %>% group_by(Name) %>% summarise(Ret = prod(1 + Returns)^(12 / n()) - 1, Vol = sd(Returns) * sqrt(12), DD_2022 = prod(1 + Returns[lubridate::year(date) == 2022]) - 1, Neg_Months = sum(Yield < 0), .groups = "drop") # return, volatility and the 2022 loss of each constructed index
+Plot_Bond_Construction(Bond_Rets, # yields next to the indexes built from them
+                       Title = "From Yields to Bond Returns", # the plot title
+                       Subtitle = "Falling yields delivered steady bond returns until 2020, and the 2022 rate shock erased several years of gains", # the main message
+                       Caption = "Note:\nMonthly returns of a ten year par bond repriced at the next month's yield, plus a month of coupon. Returns are in each bond's own currency. Calculation own.") # the note under the plot
+```
+
+![](README_files/figure-markdown_github/q4_bonds-1.png)
+
+The constructed indexes behave as expected. The United States index
+returned 2.5 percent a year since 2005 with volatility of 7.5 percent,
+and the euro index, whose yield was below zero in 37 months, returned
+only 1.7 percent. In 2022 the three indexes lost between 16.4 percent
+and 22.1 percent as central banks raised rates, which is a reminder that
+government bonds can fall together with equities when inflation is the
+shock.
+
+## How the Assets Move Together
+
+Diversification depends on correlation, so the chord diagram links every
+pair of assets whose monthly returns since 2010 have a correlation above
+0.5, with wider and deeper blue chords for stronger links, and draws red
+chords for pairs with a correlation below -0.15.
+
+``` r
+Q4_Cor <- Plot_Cor_Chord(Asset_Rets, Q4_Pal, Est_Start = lubridate::ymd(20100101), Pos_Threshold = 0.5, Neg_Threshold = -0.15, Title = "Correlation Links Across the Universe, 2010 to 2026") # the chord diagram, which also returns the correlation matrix
+```
+
+![](README_files/figure-markdown_github/q4_chord-1.png)
+
+``` r
+Local_Eq <- c("SA large caps", "SA mid caps", "SA momentum", "SA value") # the local equity indexes
+Global_Eq <- c("US equity", "Europe equity", "Japan equity", "EM equity") # the offshore equity indexes
+```
+
+The diagram is dominated by two dense clusters. Local equity indexes are
+tightly linked to one another, with an average correlation of 0.86, and
+offshore equities form a second cluster, while the average correlation
+between the two clusters is lower, at 0.61, partly because local returns
+are in rand and offshore returns in dollars, and the rand tends to
+weaken when global markets fall. Bonds connect mainly to each other, and
+the only red chords link the three offshore bonds with commodities,
+which tend to rise when inflation pushes bond yields up. Gold does not
+appear at all, since its strongest correlation with any asset is only
+0.47, which makes it the most independent asset in the universe and
+explains why every optimiser holds it.
+
+## Four Ways to Build the Portfolio
+
+All four portfolios share the same inputs and the same constraints, so
+their differences come only from the rule that sets the weights. At each
+quarter end the covariance matrix and expected returns are estimated
+from monthly returns since January 2010. Correlations are shrunk a
+quarter of the way towards their average and expected returns half way
+towards their grand mean, since sample means are the noisiest input to
+any optimiser, and the matrix is then made positive definite. The
+constraints enter the optimisers as linear restrictions, with the five
+year rule applied by dropping assets that have fewer than 60 monthly
+returns on the rebalance date.
+
+The constrained equal weight portfolio is the closest portfolio to equal
+weights that satisfies the mandate and uses no estimates, so it is the
+naive benchmark. Minimum variance uses only the covariance matrix.
+Constrained risk parity searches for the weights whose contributions to
+portfolio risk are as close to equal as the mandate allows, using
+numerical optimisation. Maximum Sharpe maximises expected return per
+unit of volatility and is the only rule that relies on expected returns,
+solved as a quadratic programme by rescaling the weights and rewriting
+every cap relative to the scale.
+
+``` r
+Q4_Strategies <- list(`Constrained equal weight` = Opt_Equal, `Minimum variance` = Opt_MinVar, `Risk parity` = Opt_RiskParity, `Maximum Sharpe` = Opt_MaxSharpe) # the four portfolio rules
+Q4_Weights <- Rebalance_Calc(Asset_Rets, Q4_Meta, Rebal_Dates, Q4_Strategies, Est_Start = lubridate::ymd(20100101), Min_Months = 60, Min_Years = 10, Cor_Shrink = 0.25, Mu_Shrink = 0.5) # the weights of each rule on every quarter end
+Q4_Check <- Q4_Weights %>% group_by(date, Strategy) %>% summarise(Sum = sum(Weight), Min = min(Weight), Max = max(Weight), Bonds = sum(Weight[Class == "Bonds"]), Equity = sum(Weight[Class == "Equity"]), Commodity = sum(Weight[Class == "Commodity"]), Global = sum(Weight[Region == "Global"]), .groups = "drop") # every exposure the mandate limits, on every date
+Q4_Breach <- with(Q4_Check, max(abs(Sum - 1), -Min, Max - 0.35, Bonds - 0.25, Equity - 0.75, Commodity - 0.15, Global - 0.60)) # the largest breach of any limit, which should be zero up to rounding
+```
+
+Across 27 rebalance dates and four rules, the largest breach of any
+limit is 0.000000, so every portfolio satisfies the mandate on every
+date.
+
+## The Efficient Frontier and the Cost of the Mandate
+
+The frontier view shows what the mandate costs. The solid line is the
+efficient frontier within the mandate on the latest rebalance date, the
+dashed line is the frontier with only the long-only condition, and the
+faint lines are the mandate frontiers on every earlier quarter end. Each
+asset is a bubble sized by its weight in the risk parity portfolio, and
+the four rules are marked as diamonds.
+
+``` r
+Q4_Frontiers <- Frontier_Path_Calc(Asset_Rets, Q4_Meta, Rebal_Dates, Est_Start = lubridate::ymd(20100101), Min_Months = 60) # the frontiers and asset positions on every rebalance date
+Fr_Now <- Q4_Frontiers$Frontiers %>% filter(date == max(date)) %>% group_by(Frontier) %>% summarise(Min_Vol = min(Vol), Max_Ret = max(Ret), .groups = "drop") # the lowest volatility and highest return on each latest frontier
+Plot_Frontier_Galaxy(Q4_Frontiers, Q4_Weights, Q4_Pal, Highlight = "Risk parity", # the frontier galaxy
+                     Title = "The Efficient Frontier Within the Mandate", # the plot title
+                     Subtitle = "The mandate removes the lowest risk portfolios, and the frontier has shifted up and to the right as the universe grew", # the main message
+                     Caption = "Note:\nExpected values from the shrunk estimates on the latest rebalance date. Faint lines are the mandate frontier on each earlier quarter end. Calculation own.") # the note under the plot
+```
+
+![](README_files/figure-markdown_github/q4_frontier-1.png)
+
+The mandate binds most at the low risk end. With only the long-only
+condition, the least volatile portfolio has an expected volatility of
+4.7 percent, built mostly from bonds and led by local inflation linked
+bonds, but the 25 percent bond limit and the 60 percent global limit
+push the least volatile mandate portfolio up to 8.9 percent. The 35
+percent single asset cap also stops the frontier from reaching the high
+return end, where United States equity sits alone. Within the mandate,
+minimum variance sits at the lowest point of the frontier and maximum
+Sharpe on its upper section, while risk parity and the equal weight
+baseline sit just inside it, since neither uses expected returns.
+
+## Capital Versus Risk
+
+A portfolio’s weights describe where the money sits, while its risk
+contributions describe where its ups and downs come from, and the two
+can be very different. The mirrored streams below show each rule’s
+capital weights above the axis and its shares of risk below it, through
+every rebalance date.
+
+``` r
+Risk_Facts <- Q4_Weights %>% filter(date == max(date)) %>% group_by(Strategy) %>% summarise(Bond_Cap = sum(Weight[Class == "Bonds"]), Bond_Risk = sum(Risk_Share[Class == "Bonds"]), Eq_Cap = sum(Weight[Class == "Equity"]), Eq_Risk = sum(Risk_Share[Class == "Equity"]), Top_Risk = max(Risk_Share), Top_Asset = Asset[which.max(Risk_Share)], .groups = "drop") # capital and risk shares by class on the latest date
+Plot_Capital_Risk_Stream(Q4_Weights, Q4_Pal, # capital above and risk below for every rule
+                         Title = "Capital and Risk Through Time", # the plot title
+                         Subtitle = "Bonds take a quarter of every portfolio's capital but contribute only a sliver of its risk", # the main message
+                         Caption = "Note:\nRisk shares are each asset's weight times its marginal contribution to ex ante portfolio variance. Streams are smoothed between quarterly rebalances. Calculation own.") # the note under the plot
+```
+
+![](README_files/figure-markdown_github/q4_stream-1.png)
+
+The mirror makes the central problem of a balanced fund visible. In the
+risk parity portfolio, bonds hold 25 percent of the capital but
+contribute only 10 percent of the risk, while equities hold 60 percent
+of the capital and contribute 78 percent of the risk. The 25 percent
+bond limit is what stops risk parity from balancing risk fully, since
+equal risk would require far more in bonds. Maximum Sharpe is the
+extreme case, with US equity alone contributing 48 percent of its risk.
+
+## The Latest Portfolios
+
+The treemaps show the weights on the latest rebalance date, with each
+tile’s area in proportion to its weight and thick borders around each
+family of assets.
+
+``` r
+Latest_W <- Q4_Weights %>% filter(date == max(date)) # the latest weights
+Holdings_N <- Latest_W %>% group_by(Strategy) %>% summarise(N = sum(Weight > 0.001), Top = max(Weight), Top_Asset = Asset[which.max(Weight)], .groups = "drop") # the number of holdings and the largest weight of each rule
+Plot_Weight_Treemap(Q4_Weights, Q4_Pal, # the treemaps of the latest weights
+                    Title = "Latest Portfolio Composition, June 2026", # the plot title
+                    Subtitle = "Risk parity spreads its capital across almost every asset, while maximum Sharpe concentrates in three", # the main message
+                    Caption = "Note:\nWeights on the latest quarterly rebalance date. Thick borders separate families of assets. Calculation own.") # the note under the plot
+```
+
+![](README_files/figure-markdown_github/q4_treemap-1.png)
+
+Risk parity holds 15 assets with no weight above 8 percent, and minimum
+variance holds 10, led by Japan equity at 19 percent. Maximum Sharpe
+holds only 6, with US equity at the 35 percent cap and the inflation
+linked bonds and gold at their class caps, which is the familiar
+tendency of mean-variance optimisation to bet heavily on the assets with
+the highest estimated returns.
+
+## How Hard the Mandate Binds
+
+The circular barplot shows how much of each limit every rule uses on
+average across the rebalance dates, with the dashed ring marking a limit
+that is fully used.
+
+``` r
+Q4_Use <- Q4_Check %>% group_by(Strategy) %>% summarise(Bonds = mean(Bonds) / 0.25, Global = mean(Global) / 0.60, Commodity = mean(Commodity) / 0.15, Largest = mean(Max) / 0.35, .groups = "drop") # the average use of each limit
+Plot_Constraint_Radial(Q4_Weights, Q4_Pal, # the circular barplot of limit use
+                       Title = "How Hard Each Rule Leans on the Mandate", # the plot title
+                       Subtitle = "Every rule fills the bond limit, and all but risk parity also fill the global limit", # the main message
+                       Caption = "Note:\nAverage exposure as a share of each limit across all quarterly rebalance dates from December 2019. Calculation own.") # the note under the plot
+```
+
+![](README_files/figure-markdown_github/q4_radial-1.png)
+
+The bond limit is the most binding condition, used in full by every
+rule, since bonds are the only low volatility asset class and every rule
+wants as much of them as it can hold. The global limit binds for three
+of the four rules, as offshore assets diversify the rand assets, and
+risk parity uses 89 percent of it. The equity limit never binds.
+Equities take whatever capital the other classes leave, and since the
+rules fill the bond limit and most of the commodity limit, equities
+settle near 60 percent, well below their 75 percent cap. The single
+asset cap matters only for maximum Sharpe, which uses 96 percent of it
+on average.
+
+## Backtest Performance
+
+The backtest holds each rule’s weights for the quarter after each
+rebalance, letting them drift with returns, and measures performance
+from January 2020 to September 2026, a period that contains the Covid
+crash, the 2022 rate shock and the strong markets of 2023 to 2026.
+
+``` r
+Q4_BT <- Backtest_Calc(Asset_Rets, Q4_Weights) # monthly portfolio returns and turnover of each rule
+Q4_Stats <- Strategy_Stats_Calc(Q4_BT, Q4_Weights) # the summary statistics of each rule
+Q4_Sub <- Q4_BT$Returns %>% mutate(Period = ifelse(date < lubridate::ymd(20230101), "2020-2022", "2023-2026")) %>% group_by(Period, Strategy) %>% summarise(Ret = prod(1 + Returns)^(12 / n()) - 1, .groups = "drop") %>% mutate(Key = paste(Strategy, Period)) # annualised returns in the stressed and the calm sub-period
+Plot_Growth_Underwater(Q4_BT$Returns, Q4_Pal, # growth curves above the underwater chart
+                       Title = "Growth and Drawdowns of the Four Portfolios", # the plot title
+                       Subtitle = "All four rules recovered quickly from the Covid crash, and maximum Sharpe pulled ahead in the rally from 2023", # the main message
+                       Caption = "Note:\nMonthly returns with weights drifting between quarterly rebalances. Offshore returns in dollars, local returns in rand. Calculation own.") # the note under the plot
+```
+
+![](README_files/figure-markdown_github/q4_backtest-1.png)
+
+Maximum Sharpe returned 12.2 percent a year, ahead of risk parity at
+10.7 percent, minimum variance at 10.5 percent and the equal weight
+baseline at 9.4 percent, with volatility between 11.4 percent and 12.0
+percent for all four. The underwater chart shows that the Covid crash
+produced the deepest losses for every rule, with risk parity’s maximum
+drawdown of 18.5 percent slightly deeper than minimum variance’s 16.2
+percent. The split by sub-period matters for a balanced fund. In the
+stressed years from 2020 to 2022, risk parity returned the most, at 5.6
+percent a year against 4.9 percent for maximum Sharpe, while maximum
+Sharpe’s lead comes entirely from the rally since 2023, when its 35
+percent position in United States equity paid off.
+
+The rainclouds show the full distribution of monthly returns, with a
+half density, a boxplot and every individual month as a dot.
+
+``` r
+Plot_Return_Raincloud(Q4_BT$Returns, Q4_Pal, # the rainclouds of monthly returns
+                      Title = "Monthly Return Distributions", # the plot title
+                      Subtitle = "The four rules share a similar shape, with March 2020 the worst month for every one of them", # the main message
+                      Caption = "Note:\nHalf densities, boxplots and individual monthly returns from January 2020 to September 2026. Calculation own.") # the note under the plot
+```
+
+![](README_files/figure-markdown_github/q4_raincloud-1.png)
+
+The distributions are close, which is expected when all four rules face
+the same tight limits. The average of the worst five percent of months
+ranges only from 7.4 percent to 7.9 percent, and the main difference
+lies in the right tail, where maximum Sharpe has more strong months.
+
+The bump chart ranks the rules by calendar year return, which shows how
+consistently each one leads.
+
+``` r
+Plot_Rank_Bump(Q4_BT$Returns, Q4_Pal, # the bump chart of yearly ranks
+               Title = "Calendar Year Rankings", # the plot title
+               Subtitle = "Risk parity led through the stressed years of 2021 and 2022, and maximum Sharpe has led every year since", # the main message
+               Caption = "Note:\nRank by calendar year return, with each year's return inside its point. * Year to September 2026. Calculation own.") # the note under the plot
+```
+
+![](README_files/figure-markdown_github/q4_bump-1.png)
+
+The ranks shift between regimes. Risk parity ranked first in 2021 and
+2022, including the 2022 sell-off in which bonds and equities fell
+together and its spread of risk helped most, while maximum Sharpe ranked
+last in 2022 and first in every year since. No rule leads in every
+environment, which is the case for choosing on robustness and not on the
+latest ranking.
+
+## Scorecard and Recommendation
+
+The radar chart brings the measures together, scaling each so that the
+outer ring is the best of the four rules.
+
+``` r
+Plot_Strategy_Radar(Q4_Stats, Q4_Pal, # the radar scorecard
+                    Title = "Strategy Scorecard", # the plot title
+                    Subtitle = "Risk parity combines a middling return with the broadest diversification and the lowest turnover", # the main message
+                    Caption = "Note:\nEach measure is scaled across the four rules, with the best rule on the outer ring. Diversified risk is the effective number of risk sources. Calculation own.") # the note under the plot
+```
+
+![](README_files/figure-markdown_github/q4_radar-1.png)
+
+``` r
+Robust <- map_df(c(0, 0.5), function(cs) { W_r <- Rebalance_Calc(Asset_Rets, Q4_Meta, Rebal_Dates, Q4_Strategies, Cor_Shrink = cs, Mu_Shrink = 0.5); Strategy_Stats_Calc(Backtest_Calc(Asset_Rets, W_r), W_r) %>% mutate(Shrink = cs) }) %>% mutate(Key = paste(Strategy, Shrink)) # the four rules with no correlation shrinkage and with twice the base case shrinkage
+W_Raw <- Rebalance_Calc(Asset_Rets, Q4_Meta, Rebal_Dates, Q4_Strategies["Maximum Sharpe"], Cor_Shrink = 0.25, Mu_Shrink = 0) # maximum Sharpe with raw sample means
+Raw_MS <- Strategy_Stats_Calc(Backtest_Calc(Asset_Rets, W_Raw), W_Raw) # its backtest statistics
+```
+
+The recommended design is the constrained risk parity portfolio. It
+delivered 10.7 percent a year, more than minimum variance and the equal
+weight baseline at similar volatility, and it was the best rule in the
+stressed years. Its risk is spread across an effective 12.8 sources,
+against 3.4 for maximum Sharpe, and it trades only 2.8 percent of the
+portfolio a quarter, against 6.5 percent for minimum variance, which
+matters for an index fund that must keep trading costs low. Most
+importantly, it does not depend on expected returns. Maximum Sharpe’s
+higher return rests on its estimates of which assets will do best, and
+when those estimates are not shrunk, its return falls to 11.6 percent,
+its drawdown deepens to 21.1 percent and its turnover rises to 6.8
+percent.
+
+The ranking is robust to the estimation choices. With no correlation
+shrinkage, risk parity returns 11.1 percent and minimum variance 10.5
+percent, and with twice the shrinkage the figures are 10.4 percent and
+10.6 percent, so the conclusions do not hinge on that choice. Minimum
+variance remains a defensible alternative for a client who values the
+shallowest drawdown above everything else.
+
+## Conclusion to Question 4
+
+A balanced fund that meets every condition of the mandate can be built
+from the universe provided, and four different rules all satisfy it on
+every quarterly rebalance from December 2019. The mandate shapes the
+result more than the choice of rule. The 25 percent bond limit binds for
+every rule and stops any of them from balancing risk fully, the 60
+percent global limit binds for most, and the equity limit never binds,
+since filling the bond and commodity limits leaves equities near 60
+percent. Within those limits, constrained risk parity offers the most
+balanced combination of return, diversification and low turnover,
+without relying on expected returns, and it held up best in the stressed
+years of 2020 to 2022. Its main weakness is that bonds still contribute
+only a small share of its risk, so the fund remains an equity-driven
+portfolio, and offshore returns are measured in dollars, which means a
+live fund would also carry rand exposure that this backtest does not
+capture.

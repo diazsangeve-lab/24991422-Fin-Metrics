@@ -3,7 +3,7 @@
 # Remove comments and add values where applicable.
 # The descriptions below should be self-explanatory
 
-title: "Question 4: Portfolio Construction"
+title: "A Global Balanced Index Fund Under a Constrained Mandate"
 #subtitle: "This will appear as Right Header"
 
 documentclass: "elsarticle"
@@ -40,8 +40,8 @@ Email1: "24991422\\@sun.ac.za"
 CorrespAuthor_1: TRUE  # If corresponding author is author 3, e.g., use CorrespAuthor_3: TRUE
 
 # Comment out below to remove both. JEL Codes only given if keywords also given.
-#keywords: "Multivariate GARCH \\sep Kalman Filter \\sep Copula" # Use \\sep to separate
-#JELCodes: "L250 \\sep L100"
+keywords: "Portfolio construction \\sep Risk parity \\sep Minimum variance \\sep Efficient frontier \\sep Constraints"
+JELCodes: "G11 \\sep G15 \\sep C61"
 
 # ----- Manage headers and footers:
 #BottomLFooter: $Title$
@@ -82,8 +82,15 @@ linestretch: 1.2                # Set distance between lines.
 link-citations: TRUE            # This creates dynamic links to the papers in reference list.
 
 ### Adding additional latex packages:
-# header-includes:
-#    - \usepackage{colortbl} # Add additional packages here.
+header-includes:
+   - \renewcommand{\topfraction}{0.9}       # a figure may fill up to 90 percent of the top of a page
+   - \renewcommand{\bottomfraction}{0.8}    # and up to 80 percent of the bottom
+   - \renewcommand{\textfraction}{0.07}     # a page needs very little text before it may also hold figures
+   - \renewcommand{\floatpagefraction}{0.8} # a page made only of figures must be at least 80 percent full
+   - \setcounter{topnumber}{2}               # at most two figures at the top of a page
+   - \setcounter{bottomnumber}{2}            # at most two figures at the bottom of a page
+   - \setcounter{totalnumber}{3}             # at most three figures on any page
+   - \usepackage{placeins}                   # provides FloatBarrier, which stops figures drifting past the conclusion
 
 output:
   pdf_document:
@@ -92,33 +99,145 @@ output:
     fig_width: 3.5 # Adjust default figure sizes. This can also be done in the chunks of the text.
     fig_height: 3.5
 abstract: |
-  Abstract to be written once the analysis is complete.
+  This report constructs a Global Balanced Index Fund from traded global and local indexes under a mandate that limits bonds to 25 percent, equities to 75 percent, commodities to 15 percent, any single asset to 35 percent and offshore exposure to 60 percent, with quarterly rebalancing, a ten year estimation look-back and a five year minimum history. Ten year bond indexes are first built from yields. Four portfolio rules that all satisfy the mandate on every rebalance date are compared from 2020 to 2026, namely constrained equal weight, minimum variance, constrained risk parity and maximum Sharpe. The bond and global limits bind for almost every rule and shape the portfolios more than the choice of rule. Maximum Sharpe earned the highest return through a concentrated position in United States equity, while constrained risk parity offered the most balanced combination of return, diversification and low turnover without relying on expected returns, and held up best in the stressed years of 2020 to 2022. Constrained risk parity is recommended.
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, fig.width = 6, fig.height = 5, fig.pos = "H") # hide code and messages in the pdf and fix figure positions
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, fig.width = 9, fig.height = 5.5, out.width = "100%", fig.align = "center", fig.pos = "!htbp") # hide code and messages in the pdf, centre figures at the page width and let LaTeX place each one at the top or bottom of a page, or two to a page of figures, so that no page is left half empty
 if(!require("pacman")) install.packages("pacman") # make sure the package loader is available
-pacman::p_load(tidyverse, lubridate, tbl2xts, PerformanceAnalytics, RcppRoll, fmxdat, glue) # load the packages used throughout this question
-list.files("../../code/Question4/", full.names = T, recursive = T) %>% .[grepl(".R", .)] %>% as.list() %>% walk(~source(.)) # source every function written for this question from the root code folder
+pacman::p_load(tidyverse, lubridate, xts, tbl2xts, PerformanceAnalytics, RcppRoll, fmxdat, rmsfuns, glue) # load the packages used throughout this question
+options(dplyr.summarise.inform = F) # stop summarise from printing grouping messages
+c("../../code/Question1/", "../../code/Question2/", "../../code/Question4/") %>% map(~list.files(.x, full.names = T, recursive = T)) %>% unlist() %>% .[grepl(".R", .)] %>% as.list() %>% walk(~source(.)) # source the functions of this question and the shared helpers of questions 1 and 2 from the root code folder
 ```
 
-# Introduction
+```{r data, include=FALSE}
+MSCI <- read_rds("../../data/MSCI_Indexes.rds") # total return indexes for the MSCI global equity indexes
+Bond_Yields <- read_rds("../../data/Global_Bond_Yields.rds") # ten year government bond yields
+Commods <- read_rds("../../data/Commodities.rds") # commodity total return indexes
+Idx_Daily <- read_rds("../../data/Index_Returns_Daily.rds") # daily returns of the local equity and factor indexes
+LCL_Yield_Proxies <- read_rds("../../data/Monthly_LCL_Yield_Indexes.rds") # monthly returns of the local bond, inflation linked bond and property indexes
+```
 
-To be written.
+```{r calcs, include=FALSE}
+Q4_Meta <- tribble(~Asset, ~Source, ~Source_Name, ~Class, ~Region, # the universe, each asset's source, asset class and region
+                   "US equity", "MSCI", "MSCI_USA", "Equity", "Global", "Europe equity", "MSCI", "MSCI_EU", "Equity", "Global",
+                   "Japan equity", "MSCI", "MSCI_Jap", "Equity", "Global", "EM equity", "MSCI", "MSCI_EM", "Equity", "Global",
+                   "US REITs", "MSCI", "MSCI_USREIT", "Equity", "Global", "US 10Yr bond", "Bonds", "US_10Yr", "Bonds", "Global",
+                   "Euro 10Yr bond", "Bonds", "EURO_10Yr", "Bonds", "Global", "UK 10Yr bond", "Bonds", "UK_10Yr", "Bonds", "Global",
+                   "Commodities", "Commods", "Bcom_Index", "Commodity", "Global", "Gold", "Commods", "Gold", "Commodity", "Global",
+                   "SA large caps", "Local", "Top 40", "Equity", "Local", "SA mid caps", "Local", "MidCaps", "Equity", "Local",
+                   "SA momentum", "Local", "Mom", "Equity", "Local", "SA value", "Local", "Val", "Equity", "Local",
+                   "SA bonds", "LCL", "FTSE/JSE All Bond", "Bonds", "Local", "SA inflation-linked", "LCL", "FTSE/JSE SA Inflation-Linked Government Bonds", "Bonds", "Local",
+                   "SA property", "LCL", "FTSE/JSE SA Listed Property", "Equity", "Local")
+Bond_Rets <- Bond_TRI_Calc(Bond_Yields, Bond_Sel = c("US_10Yr", "EURO_10Yr", "UK_10Yr"), Maturity = 10) # monthly bond returns built from yields
+Q4_End <- lubridate::ymd(20260930) # the last month in the data
+Asset_Rets <- Asset_Returns_Build(Q4_Meta, MSCI, Commods, Bond_Rets, Idx_Daily, LCL_Yield_Proxies) %>% filter(date <= Q4_End) # monthly returns for every asset
+Rebal_Dates <- seq(lubridate::ymd(20200101), lubridate::ymd(20260701), by = "3 months") - 1 # quarter ends from December 2019
+Q4_Pal <- Q4_Palettes(Q4_Meta) # colours for assets, families and rules
+Excluded <- tibble(Asset = "SA low volatility", Start = min(Idx_Daily$date[Idx_Daily$Tickers == "STXLVLJ433"]), End = Q4_End, Reason = "Excluded, under five years of returns") # the factor index the five year rule removes
+Bond_Facts <- Bond_Rets %>% group_by(Name) %>% summarise(Ret = prod(1 + Returns)^(12 / n()) - 1, DD_2022 = prod(1 + Returns[lubridate::year(date) == 2022]) - 1, .groups = "drop") # constructed bond index facts
+Q4_Strategies <- list(`Constrained equal weight` = Opt_Equal, `Minimum variance` = Opt_MinVar, `Risk parity` = Opt_RiskParity, `Maximum Sharpe` = Opt_MaxSharpe) # the four portfolio rules
+Q4_Weights <- Rebalance_Calc(Asset_Rets, Q4_Meta, Rebal_Dates, Q4_Strategies, Cor_Shrink = 0.25, Mu_Shrink = 0.5) # weights on every quarter end
+Q4_Frontiers <- Frontier_Path_Calc(Asset_Rets, Q4_Meta, Rebal_Dates) # frontiers on every quarter end
+Fr_Now <- Q4_Frontiers$Frontiers %>% filter(date == max(date)) %>% group_by(Frontier) %>% summarise(Min_Vol = min(Vol), .groups = "drop") # lowest volatility on each latest frontier
+Risk_Facts <- Q4_Weights %>% filter(date == max(date)) %>% group_by(Strategy) %>% summarise(Bond_Cap = sum(Weight[Class == "Bonds"]), Bond_Risk = sum(Risk_Share[Class == "Bonds"]), Top_Risk = max(Risk_Share), .groups = "drop") # capital and risk by class
+Q4_BT <- Backtest_Calc(Asset_Rets, Q4_Weights) # portfolio returns and turnover
+Q4_Stats <- Strategy_Stats_Calc(Q4_BT, Q4_Weights) # summary statistics of each rule
+Q4_Sub <- Q4_BT$Returns %>% mutate(Period = ifelse(date < lubridate::ymd(20230101), "2020-2022", "2023-2026")) %>% group_by(Period, Strategy) %>% summarise(Ret = prod(1 + Returns)^(12 / n()) - 1, .groups = "drop") %>% mutate(Key = paste(Strategy, Period)) # returns in the stressed and calm sub-periods
+Q4_Cor <- Asset_Rets %>% filter(date >= lubridate::ymd(20100101)) %>% select(date, Asset, Returns) %>% spread(Asset, Returns) %>% select(-date) %>% cor(use = "pairwise.complete.obs") # correlations since 2010
+SP <- function(k, col = "Ret", acc = 0.1) Fact_Pull(Q4_Stats, k, col, Key_Col = "Strategy", Pct = acc) # a short helper for the strategy figures in the text
+```
 
-# Data and Constraints
+# Introduction \label{Intro}
 
-To be written.
+A balanced index fund must combine asset classes so that no single market drives its outcome, while respecting limits that its mandate sets. This report builds such a fund from traded global and local indexes and compares four rules for setting its weights. Section \ref{Data} describes the universe and the construction of bond indexes from yields, Section \ref{Method} sets out the portfolio rules and the mandate, Section \ref{Results} compares the portfolios through the efficient frontier, their split of capital and risk, and an out-of-sample backtest, and Section \ref{Conclusion} gives the recommendation.
 
-# Portfolio Construction
+# Data \label{Data}
 
-To be written.
+## The Investable Universe
 
-# Results
+The universe holds `r n_distinct(Asset_Rets$Asset)` assets, namely four offshore regional equity indexes and United States real estate, three ten year government bond indexes, a broad commodity index and gold, the local large and mid cap indexes with the local momentum and value factor indexes, and the local bond, inflation linked bond and listed property indexes. Listed property counts as equity and inflation linked bonds as bonds. All returns are monthly, offshore returns are in dollars and local returns in rand, since the data contains no exchange rate, so the offshore holdings are effectively currency hedged. Figure \ref{fig:universe} shows when each asset becomes eligible under the five year rule. The local equity indexes start in 2015 and qualify from December 2019, which is also the first date with ten years of data after 2010, so the backtest starts there. The local low volatility index starts only in 2024 and is excluded.
 
-To be written.
+```{r universe, fig.width = 11, fig.height = 6.2, fig.cap = "Data history and eligibility of every asset"}
+Plot_Universe_Timeline(Asset_Rets, Q4_Meta, Q4_Pal, Excluded = Excluded, Rebal_Dates = Rebal_Dates, Title = "The Investable Universe Through Time", Subtitle = "Local equity indexes only become eligible from 2020 onwards, while the local low volatility index never qualifies", Caption = "Note:\nBold bars show the period in which the five year rule allows each asset to be held. Calculation own.") # the eligibility timeline
+```
 
-# Conclusion
+## Bond Indexes From Yields
 
-To be written.
+The ten year bond indexes are built by buying a par bond each month at the prevailing yield and repricing it a month later, with nine years and eleven months to run, at the new yield, adding a month of coupon. Full repricing captures both income and convexity. Figure \ref{fig:bonds} shows the yields and the resulting indexes. The United States index returned `r Fact_Pull(Bond_Facts, "US_10Yr", "Ret", Pct = 0.1)` a year since 2005, and in 2022 the three indexes lost between `r Pct_Text(abs(max(Bond_Facts$DD_2022)), 0.1)` and `r Pct_Text(abs(min(Bond_Facts$DD_2022)), 0.1)` as rates rose.
 
+```{r bonds, fig.width = 11, fig.height = 5, fig.cap = "Government bond yields and the total return indexes built from them"}
+Plot_Bond_Construction(Bond_Rets, Title = "From Yields to Bond Returns", Subtitle = "Falling yields delivered steady bond returns until 2020, and the 2022 rate shock erased several years of gains", Caption = "Note:\nA ten year par bond repriced at the next month's yield, plus a month of coupon. Calculation own.") # yields and constructed indexes
+```
+
+## Correlation Structure
+
+Figure \ref{fig:chord} links every pair of assets with a correlation above 0.5 since 2010. Local equities form one tight cluster and offshore equities another, bonds link mainly to each other, and the only negative links join the offshore bonds with commodities. Gold has no link at all, since its strongest correlation with any asset is `r sprintf("%.2f", max(abs(Q4_Cor["Gold", setdiff(colnames(Q4_Cor), "Gold")])))`, which makes it the most independent asset in the universe.
+
+```{r chord, fig.width = 7.5, fig.height = 7.5, out.width = "62%", fig.cap = "Strong correlation links between assets since 2010"}
+invisible(Plot_Cor_Chord(Asset_Rets, Q4_Pal, Title = "Correlation Links Across the Universe, 2010 to 2026")) # the chord diagram
+```
+
+# Portfolio Rules and the Mandate \label{Method}
+
+At each quarter end from December 2019, the covariance matrix and expected returns are estimated from monthly returns since January 2010, with correlations shrunk a quarter of the way to their average and means half way to their grand mean, and assets with fewer than 60 monthly returns dropped. Four rules then set the weights, all subject to the same linear constraints. The constrained equal weight portfolio is the closest to equal weights within the mandate, minimum variance minimises volatility, constrained risk parity makes risk contributions as equal as the mandate allows, and maximum Sharpe maximises expected return per unit of risk. Every portfolio satisfies every limit on all `r length(Rebal_Dates)` rebalance dates.
+
+# Results \label{Results}
+
+## The Efficient Frontier
+
+Figure \ref{fig:frontier} shows the cost of the mandate. The least volatile long-only portfolio has an expected volatility of `r Fact_Pull(Fr_Now, "Long only, no other limits", "Min_Vol", Key_Col = "Frontier", Pct = 0.1)`, while the bond and global limits push the least volatile mandate portfolio up to `r Fact_Pull(Fr_Now, "Within the mandate", "Min_Vol", Key_Col = "Frontier", Pct = 0.1)`. Minimum variance sits at the lowest point of the mandate frontier and maximum Sharpe on its upper section, while risk parity and equal weight sit just inside it.
+
+```{r frontier, fig.width = 11, fig.height = 6.2, fig.cap = "Efficient frontiers, assets and the four portfolios on the latest rebalance date"}
+Plot_Frontier_Galaxy(Q4_Frontiers, Q4_Weights, Q4_Pal, Highlight = "Risk parity", Title = "The Efficient Frontier Within the Mandate", Subtitle = "The mandate removes the lowest risk portfolios, and the frontier has shifted up as the universe grew", Caption = "Note:\nBubbles are sized by the risk parity weight. Faint lines are earlier mandate frontiers. Calculation own.") # the frontier galaxy
+```
+
+## Capital and Risk
+
+Figure \ref{fig:stream} contrasts where each portfolio's capital sits with where its risk comes from. Bonds take `r Fact_Pull(Risk_Facts, "Risk parity", "Bond_Cap", Key_Col = "Strategy", Pct = 1)` of the risk parity portfolio but contribute only `r Fact_Pull(Risk_Facts, "Risk parity", "Bond_Risk", Key_Col = "Strategy", Pct = 1)` of its risk, since the bond limit stops it from balancing risk fully. Figure \ref{fig:treemap} shows the latest weights, where risk parity spreads its capital widely and maximum Sharpe concentrates in United States equity, inflation linked bonds and gold, each at its cap.
+
+```{r stream, fig.width = 12, fig.height = 6.6, fig.cap = "Capital weights above and risk shares below, through time"}
+Plot_Capital_Risk_Stream(Q4_Weights, Q4_Pal, Title = "Capital and Risk Through Time", Subtitle = "Bonds take a quarter of every portfolio's capital but contribute only a sliver of its risk", Caption = "Note:\nRisk shares from each asset's contribution to ex ante variance. Calculation own.") # the mirrored streams
+```
+
+```{r treemap, fig.width = 11, fig.height = 6.6, fig.cap = "Composition of the four portfolios on the latest rebalance date"}
+Plot_Weight_Treemap(Q4_Weights, Q4_Pal, Title = "Latest Portfolio Composition, June 2026", Subtitle = "Risk parity spreads its capital across almost every asset, while maximum Sharpe concentrates in a few", Caption = "Note:\nTile area in proportion to weight. Calculation own.") # the treemaps
+```
+
+## How Hard the Mandate Binds
+
+Figure \ref{fig:radial} shows that the bond limit is used in full by every rule and the global limit by all but risk parity. The equity limit never binds, since filling the bond and commodity limits leaves equities near 60 percent, and only maximum Sharpe leans on the single asset cap.
+
+```{r radial, fig.width = 8, fig.height = 8, out.width = "52%", fig.cap = "Average use of each mandate limit"}
+Plot_Constraint_Radial(Q4_Weights, Q4_Pal, Title = "How Hard Each Rule Leans on the Mandate", Subtitle = "Every rule fills the bond limit, and all but risk parity also fill the global limit", Caption = "Note:\nAverage exposure as a share of each limit across all rebalance dates. Calculation own.") # the circular barplot
+```
+
+## Backtest Performance
+
+Figure \ref{fig:backtest} shows the backtest from January 2020 to September 2026. Maximum Sharpe returned `r SP("Maximum Sharpe")` a year, risk parity `r SP("Risk parity")`, minimum variance `r SP("Minimum variance")` and the equal weight baseline `r SP("Constrained equal weight")`, all with volatility between `r Pct_Text(min(Q4_Stats$Vol), 0.1)` and `r Pct_Text(max(Q4_Stats$Vol), 0.1)`. In the stressed years from 2020 to 2022, risk parity returned the most, at `r Fact_Pull(Q4_Sub, "Risk parity 2020-2022", "Ret", Key_Col = "Key", Pct = 0.1)` a year, and maximum Sharpe's lead comes entirely from the rally since 2023. Figures \ref{fig:raincloud} and \ref{fig:bump} show that the monthly return distributions are similar and that the ranking of the rules changes between regimes.
+
+```{r backtest, fig.width = 11, fig.height = 5.4, fig.cap = "Growth of one unit and drawdowns of the four portfolios"}
+Plot_Growth_Underwater(Q4_BT$Returns, Q4_Pal, Title = "Growth and Drawdowns of the Four Portfolios", Subtitle = "All four rules recovered quickly from the Covid crash, and maximum Sharpe pulled ahead in the rally from 2023", Caption = "Note:\nWeights drift between quarterly rebalances. Calculation own.") # growth and underwater chart
+```
+
+```{r raincloud, fig.width = 11, fig.height = 5.6, fig.cap = "Distributions of monthly returns"}
+Plot_Return_Raincloud(Q4_BT$Returns, Q4_Pal, Title = "Monthly Return Distributions", Subtitle = "The four rules share a similar shape, with March 2020 the worst month for every one of them", Caption = "Note:\nHalf densities, boxplots and individual months. Calculation own.") # rainclouds
+```
+
+```{r bump, fig.width = 11, fig.height = 5, fig.cap = "Ranking of the four portfolios by calendar year return"}
+Plot_Rank_Bump(Q4_BT$Returns, Q4_Pal, Title = "Calendar Year Rankings", Subtitle = "Risk parity led in 2021 and 2022, and maximum Sharpe has led every year since", Caption = "Note:\nEach year's return inside its point. * Year to September 2026. Calculation own.") # the bump chart
+```
+
+## Scorecard
+
+In Figure \ref{fig:radar}, risk parity has an effective `r Fact_Pull(Q4_Stats, "Risk parity", "Eff_Risk", Key_Col = "Strategy", Digits = 1)` sources of risk against `r Fact_Pull(Q4_Stats, "Maximum Sharpe", "Eff_Risk", Key_Col = "Strategy", Digits = 1)` for maximum Sharpe, and trades `r SP("Risk parity", "Turnover")` a quarter against `r SP("Minimum variance", "Turnover")` for minimum variance.
+
+```{r radar, fig.width = 13, fig.height = 4.8, fig.cap = "Scorecard of the four portfolios"}
+Plot_Strategy_Radar(Q4_Stats, Q4_Pal, Title = "Strategy Scorecard", Subtitle = "Risk parity combines a middling return with the broadest diversification and the lowest turnover", Caption = "Note:\nEach measure scaled across the four rules, with the best on the outer ring. Calculation own.") # the radar scorecard
+```
+
+\FloatBarrier
+
+# Conclusion \label{Conclusion}
+
+Four rules can build a balanced fund that meets every condition of the mandate, and the mandate shapes the result more than the choice of rule, since the bond and global limits bind for almost every rule. Constrained risk parity is recommended. It earned more than minimum variance and the equal weight baseline at similar volatility, held up best in the stressed years, spreads its risk most widely, trades least and does not depend on expected returns, which drive maximum Sharpe's concentrated bet on United States equity. Its weakness is that bonds still contribute little of its risk, and a live fund would also carry the rand exposure that this dollar-based backtest leaves out.

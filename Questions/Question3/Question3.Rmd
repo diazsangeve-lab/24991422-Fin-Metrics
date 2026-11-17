@@ -1,21 +1,145 @@
 ---
-title: "ABC Fund: Peer Performance Insights"
-subtitle: "Question 3: Portfolio Return Comparison"
+title: "ABC Fund Against Its Peers"
+subtitle: "Peer performance insights from a returns perspective, 2015 to 2025"
 author: "Diaz Sangeve (24991422)"
 output:
   powerpoint_presentation:
     slide_level: 2
     fig_width: 10
-    fig_height: 5.5
+    fig_height: 4.6
+    reference_doc: template.pptx
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, dpi = 300) # hide code and messages on the slides and keep figures sharp
 if(!require("pacman")) install.packages("pacman") # make sure the package loader is available
-pacman::p_load(tidyverse, lubridate, tbl2xts, PerformanceAnalytics, RcppRoll, fmxdat, glue) # load the packages used throughout this question
-list.files("../../code/Question3/", full.names = T, recursive = T) %>% .[grepl(".R", .)] %>% as.list() %>% walk(~source(.)) # source every function written for this question from the root code folder
+pacman::p_load(tidyverse, lubridate, xts, tbl2xts, PerformanceAnalytics, RcppRoll, fmxdat, glue) # load the packages used throughout this question
+options(dplyr.summarise.inform = F) # stop summarise from printing grouping messages
+knitr::knit_hooks$set(plot = function(x, options) paste0("\n\n![](", x, ")\n\n")) # write each figure as a plain image line, since the default adds an html comment that pushes the speaker notes onto an extra blank slide
+c("../../code/Question1/", "../../code/Question2/", "../../code/Question3/") %>% map(~list.files(.x, full.names = T, recursive = T)) %>% unlist() %>% .[grepl(".R", .)] %>% as.list() %>% walk(~source(.)) # source the functions of this question and the shared helpers of questions 1 and 2 from the root code folder
 ```
 
-## Overview
+```{r data, include=FALSE}
+Active_Manager_Peers <- read_rds("../../data/Active_Managers.rds") # monthly returns of the active manager peer group
+ABC_Fund <- read_rds("../../data/ABC_Fund.rds") # monthly returns of ABC Fund
+Idx_Daily <- read_rds("../../data/Index_Returns_Daily.rds") # daily index returns, including the Capped SWIX
+Stock_Returns <- read_rds("../../data/Stock_Returns_Daily.rds") # daily stock returns, used for market dispersion
+Monthly_Constituents <- read_rds("../../data/Monthly_Index_Constituents.rds") # monthly Capped SWIX constituents and weights
+```
 
-To be written.
+```{r calcs, include=FALSE}
+BM_Monthly <- Idx_Daily %>% filter(Tickers == "J433") %>% select(date, Name, Returns) %>% Monthly_Returns_Calc() %>% transmute(date = lubridate::ceiling_date(date, "month") - 1, YM, BM = Returns) # monthly Capped SWIX returns, dated at the calendar month end like the fund returns
+End_Date <- max(ABC_Fund$date) # the last month that the fund and its peers cover
+Univ <- Fund_Universe_Prep(Active_Manager_Peers, ABC_Fund, BM_Monthly, Fund_Label = "ABC Fund", End_Date = End_Date) # peers, the fund and the benchmark in one data frame
+Stats <- Fund_Stats_Calc(Univ, Min_Months = 36) # return, risk and exposure statistics from 2015
+Fund_Stats <- Stats %>% filter(Group == "ABC Fund") # the fund's own statistics
+Peer_Med <- Stats %>% filter(Group == "Peer") %>% summarise(across(c(Ret, Excess, Vol, Beta, Alpha, R2, MaxDD), median)) # the typical peer
+Beat <- function(col, higher = TRUE) mean(if(higher) Stats[[col]][Stats$Group == "Peer"] < Fund_Stats[[col]] else Stats[[col]][Stats$Group == "Peer"] > Fund_Stats[[col]]) # the share of peers the fund beats on one measure
+Min_Beat <- min(Beat("Ret"), Beat("Excess"), Beat("IR"), Beat("Vol", FALSE), Beat("MaxDD", FALSE), Beat("Beta", FALSE)) # the fund's weakest standing across the scorecard
+Roll_Betas <- Roll_Beta_Calc(Univ, NSel = 36) # rolling three year betas of every fund
+Beta_Range <- Roll_Betas %>% filter(Group == "Peer", lubridate::year(date) >= 2019) %>% group_by(Year = lubridate::year(date)) %>% summarise(Med = median(Beta)) %>% pull(Med) %>% range() # the range of the typical peer's yearly beta since 2019
+Beta_Latest <- Roll_Betas %>% filter(date == max(date)) %>% summarise(Peer = median(Beta[Group == "Peer"]), Fund = Beta[Group == "ABC Fund"], Share_Above = mean(Beta[Group == "Peer"] > 0.75)) # the latest rolling betas
+Drivers <- Return_Drivers_Calc(Univ, Min_Months = 60) # the split of return variance into market, shared and unique parts
+Drv_Fund <- Drivers %>% filter(Group == "ABC Fund") # the fund's split
+Drv_Peer <- Drivers %>% filter(Group == "Peer") %>% summarise(across(c(Market, Shared, Unique), median)) # the typical peer's split
+Pct <- Peer_Percentile_Calc(Univ, BM_Monthly %>% filter(date <= End_Date), Fund_Label = "ABC Fund", NSel = 36) # rolling three year returns in peer percentile bands
+Cal <- Calendar_Rank_Calc(Univ, Fund_Label = "ABC Fund") # calendar year ranks of the fund
+Disp <- Market_Dispersion_Calc(Monthly_Constituents %>% filter(Fund == "CappedSWIX"), Stock_Returns, Ret_Cap = 0.25) # monthly market dispersion
+DA <- Dispersion_Alpha_Calc(Univ, Disp, Fund_Label = "ABC Fund", NSel = 12) # trailing dispersion against trailing alpha
+DA_Terc <- DA %>% group_by(Tercile) %>% summarise(Fund = mean(Fund_Alpha), Peer = mean(Peer_Alpha), Hit = mean(Fund_Alpha > Peer_Alpha)) # averages by dispersion regime
+NW_Fund <- NW_Slope_Test(DA, "Fund_Alpha", "Disp_Roll", Lag = 12) # does the fund's alpha rise with dispersion
+Monthly_Test <- Univ %>% filter(Group == "ABC Fund", !is.na(BM)) %>% inner_join(Disp %>% select(YM, Disp), by = "YM") %>% summarise(Cor = cor(Returns - BM, Disp)) # the same question month by month, using raw excess returns
+```
+
+## Three Points for Clients
+
+- **Something other than market beta.** A market beta of `r sprintf("%.2f", Fund_Stats$Beta)` against `r sprintf("%.2f", Peer_Med$Beta)` for the typical peer, with a return of `r Pct_Text(Fund_Stats$Ret, 0.1)` a year against `r Pct_Text(Peer_Med$Ret, 0.1)`.
+- **A smoother ride.** Volatility of `r Pct_Text(Fund_Stats$Vol, 0.1)` and a worst fall of `r Pct_Text(Fund_Stats$MaxDD, 0.1)`, against `r Pct_Text(Peer_Med$Vol, 0.1)` and `r Pct_Text(Peer_Med$MaxDD, 0.1)` for the typical peer.
+- **Strongest when stocks diverge.** In the most dispersed markets its 12 month alpha averaged `r Pct_Text(DA_Terc$Fund[3], 0.1)`, against `r Pct_Text(DA_Terc$Peer[3], 0.1)` for the typical peer.
+
+::: notes
+These three points carry the case. Every figure in the deck compares ABC Fund with the full South African active equity peer group over the same months, from January 2015, when the benchmark series begins, to October 2025. The rest of the slides back up each point in turn.
+:::
+
+## Top `r round(100 * (1 - Min_Beat))` Percent of Peers on Every Measure
+
+```{r scorecard}
+Plot_Peer_Scorecard(Stats, Fund_Label = "ABC Fund", Title = glue::glue("ABC Fund Against {sum(Stats$Group == 'Peer')} Peers, 2015 to 2025"), Subtitle = NULL, Caption = "Note:\nPeers with at least three years of returns since 2015. Lower volatility, drawdown and beta count as better. Calculation own.") # the scorecard of percentile standings
+```
+
+::: notes
+Each bar shows the share of peers that ABC Fund beats on one measure, so a longer bar is better. For volatility, drawdown and market beta, a lower number counts as a win. The column on the right gives ABC Fund's number next to the typical peer's. ABC Fund is in the top fifth of the industry on return and risk at the same time, which is rare.
+:::
+
+## Most Peers Deliver Mostly Market Beta
+
+```{r beta_box}
+Plot_Roll_Beta_Box(Roll_Betas, Fund_Label = "ABC Fund", Min_Months = 6, Title = "Rolling 3 Year Beta to the Capped SWIX", Subtitle = NULL, Caption = "Note:\nEach grey dot is one peer fund's beta over the preceding three years in one month. Boxes span the middle half of peers. Calculation own.") # boxplots of peer betas over the individual fund points
+```
+
+::: notes
+Beta measures how much a fund moves when the market moves. A beta of one means the fund simply follows the market. Since 2019 the typical active manager's beta has stayed between `r sprintf('%.2f', Beta_Range[1])` and `r sprintf('%.2f', Beta_Range[2])`, so most of what clients pay active fees for is market exposure they could buy cheaply in an index fund. At the latest reading, `r Pct_Text(Beta_Latest$Share_Above)` of peers had a beta above 0.75. ABC Fund's beta has drifted down to `r sprintf("%.2f", Beta_Latest$Fund)`, the bottom of the range, against `r sprintf("%.2f", Beta_Latest$Peer)` for the typical peer.
+:::
+
+## ABC Fund Earns More With Less Market Exposure
+
+```{r beta_alpha}
+Plot_Beta_Alpha(Stats, Fund_Label = "ABC Fund", Title = "Market Beta and Alpha, 2015 to 2025", Subtitle = NULL, Caption = "Note:\nAlpha is the annualised return left after removing each fund's market exposure, from a regression on the Capped SWIX. Calculation own.") # every fund's beta against its alpha
+```
+
+::: notes
+Each dot is a peer fund. Moving left means less market exposure, and moving up means more return that the market does not explain. ABC Fund sits in the top left corner, with an alpha of `r Pct_Text(Fund_Stats$Alpha, 0.1)` a year against `r Pct_Text(Peer_Med$Alpha, 0.1)` for the typical peer. This is the clearest answer to whether the fund offers something other than market beta.
+:::
+
+## ABC Fund Depends Far Less on the Market
+
+```{r drivers}
+Plot_Return_Drivers(Drivers, Fund_Label = "ABC Fund", Title = "What Drives Each Fund's Returns, 2015 to 2025", Subtitle = NULL, Caption = "Note:\nShares of monthly return variance explained by the Capped SWIX, then by the median non-market return of the other peers. Calculation own.") # the sorted barcode of return drivers
+```
+
+::: notes
+Each thin bar is one fund, split into three parts. The dark blue part moves with the market, the light blue part moves with what other managers are doing, and the orange part is unique to the fund. For the typical peer, `r Pct_Text(Drv_Peer$Market)` of the ups and downs come from the market. For ABC Fund the figure is `r Pct_Text(Drv_Fund$Market)`, and `r Pct_Text(Drv_Fund$Unique)` is its own, more than twice the typical peer's `r Pct_Text(Drv_Peer$Unique)`. One caution for the talk is that ABC Fund's non-market bets overlap with the industry's common bets slightly more than most, at `r Pct_Text(Drv_Fund$Shared)` against `r Pct_Text(Drv_Peer$Shared)`. The fund's difference therefore comes mainly from taking less market risk, and it is safer to describe it as independent of the market than as contrarian to other managers.
+:::
+
+## Top Half of Peers in `r sum(Cal$Pct >= 0.5)` of `r nrow(Cal)` Calendar Years
+
+```{r fan}
+Plot_Peer_Fan(Pct, Cal, Fund_Label = "ABC Fund", Title = "Rolling 3 Year Returns Against the Peer Group", Subtitle = NULL, Caption = "Note:\nBands span the middle half and middle 90 percent of peers. Tiles give the percentage of peers beaten each year.\n* Year to October 2025. Calculation own.") # the peer fan with the calendar year strip
+```
+
+::: notes
+The shaded bands show the range of peer returns over rolling three year periods, and the orange line is ABC Fund. The tiles underneath show the percentage of peers it beat in each calendar year, with orange marking the top half. ABC Fund led clearly in 2020 and 2021, when it held up far better through the Covid crash. In the strong market of 2025 its low market exposure has held it back, which is the price of the smoother ride and worth acknowledging openly.
+:::
+
+## Dispersion Has Rewarded ABC Fund's Stock Picks
+
+```{r dispersion}
+Plot_Dispersion_Alpha(DA, Fund_Label = "ABC Fund", Title = "Market Dispersion and 12 Month Alpha", Subtitle = NULL, Caption = "Note:\nDispersion is the weighted spread of Capped SWIX constituent returns each month. Alpha removes each fund's market exposure. Calculation own.") # dispersion against trailing alpha
+```
+
+::: notes
+Dispersion measures how differently individual shares behave in a month. When it is high, stock picking matters most. Over rolling 12 month periods, ABC Fund's risk-adjusted return rises clearly with dispersion, and the link is statistically significant, with a p-value of `r sprintf("%.3f", NW_Fund$p)` after allowing for overlapping periods. In the most dispersed third of periods, ABC Fund beat the typical peer every time. The claim should be made carefully, however. Month by month, raw returns above the benchmark show no link with dispersion, with a correlation of `r sprintf("%.2f", Monthly_Test$Cor)`, because dispersed months are often strong rising markets in which a low beta fund lags. The safe wording is that high dispersion has rewarded ABC Fund's stock selection over a year, after allowing for its lower market exposure.
+:::
+
+## Making the Case
+
+- **Lead with independence.** ABC Fund gives clients return that does not come from the market, which most active peers do not.
+- **Use the risk record.** Lower volatility and shallower drawdowns than most peers, with higher returns.
+- **Frame dispersion carefully.** The fund has done best when stocks diverge, measured over a year and after allowing for its lower market exposure.
+- **Be open about rallies.** In sharply rising markets a lower beta fund will lag, as it did in 2025.
+
+::: notes
+The strongest and most defensible message is independence from the market combined with a better return and risk record than most peers. The dispersion claim holds, but only in the framing above, and a sceptical audience will test it. Describing the fund as contrarian to other managers is the weakest claim, since the data shows its difference comes mainly from lower market exposure.
+:::
+
+## Data and Method
+
+- Peers include funds that later closed, so the comparison is not flattered by survivorship.
+- Peer `r paste(attr(Univ, 'Clones'), collapse = ', ')` duplicates ABC Fund's returns and is removed.
+- Benchmark comparisons run from January 2015, when the Capped SWIX series begins, to October 2025.
+- Market dispersion is the weighted spread of Capped SWIX share returns each month.
+- Returns are compared as provided, so any fee differences are already in them.
+
+::: notes
+These notes are for questions from the floor. The peer group changes over time as funds open and close, and every comparison uses the funds that were open over the same months as ABC Fund.
+:::
