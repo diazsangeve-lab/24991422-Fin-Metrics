@@ -3,7 +3,7 @@
 # Remove comments and add values where applicable.
 # The descriptions below should be self-explanatory
 
-title: "Question 2: Mid, Small and Large Cap Indices"
+title: "Size and Risk in the Local Equity Market, a Comparison of Large, Mid and Small Cap Indexes"
 #subtitle: "This will appear as Right Header"
 
 documentclass: "elsarticle"
@@ -40,8 +40,8 @@ Email1: "24991422\\@sun.ac.za"
 CorrespAuthor_1: TRUE  # If corresponding author is author 3, e.g., use CorrespAuthor_3: TRUE
 
 # Comment out below to remove both. JEL Codes only given if keywords also given.
-#keywords: "Multivariate GARCH \\sep Kalman Filter \\sep Copula" # Use \\sep to separate
-#JELCodes: "L250 \\sep L100"
+keywords: "Size indexes \\sep Concentration \\sep Active share \\sep Realised volatility \\sep Stratification"
+JELCodes: "G11 \\sep G12 \\sep G15"
 
 # ----- Manage headers and footers:
 #BottomLFooter: $Title$
@@ -82,8 +82,15 @@ linestretch: 1.2                # Set distance between lines.
 link-citations: TRUE            # This creates dynamic links to the papers in reference list.
 
 ### Adding additional latex packages:
-# header-includes:
-#    - \usepackage{colortbl} # Add additional packages here.
+header-includes:
+   - \renewcommand{\topfraction}{0.9}       # a figure may fill up to 90 percent of the top of a page
+   - \renewcommand{\bottomfraction}{0.8}    # and up to 80 percent of the bottom
+   - \renewcommand{\textfraction}{0.07}     # a page needs very little text before it may also hold figures
+   - \renewcommand{\floatpagefraction}{0.8} # a page made only of figures must be at least 80 percent full
+   - \setcounter{topnumber}{2}               # at most two figures at the top of a page
+   - \setcounter{bottomnumber}{2}            # at most two figures at the bottom of a page
+   - \setcounter{totalnumber}{3}             # at most three figures on any page
+   - \usepackage{placeins}                   # provides FloatBarrier, which stops figures drifting past the conclusion
 
 output:
   pdf_document:
@@ -92,29 +99,133 @@ output:
     fig_width: 3.5 # Adjust default figure sizes. This can also be done in the chunks of the text.
     fig_height: 3.5
 abstract: |
-  Abstract to be written once the analysis is complete.
+  This report compares the traits of the local large, mid and small cap indexes against the Capped SWIX. The large-cap index is a concentrated, resource-heavy portfolio that has become close to a copy of the benchmark, with an active share of 13 percent in August 2026, and it delivered the best risk-adjusted return and the shallowest drawdown between 2015 and 2026. The small-cap index is the only one that differs materially from the benchmark. Its domestic, property-heavy constituents are the most volatile individually, yet they combine into the calmest index, because their shocks are largely unrelated. That diversification breaks down in crises and when the rand is volatile, and part of the small caps' measured calm reflects stale prices in thinly traded stocks. The mid-cap index has drifted towards the large caps in its holdings and concentration, and has offered the weakest return with the least favourable asymmetry between up and down markets.
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, fig.width = 6, fig.height = 5, fig.pos = "H") # hide code and messages in the pdf and fix figure positions
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, fig.width = 9, fig.height = 5.5, out.width = "100%", fig.align = "center", fig.pos = "!htbp") # hide code and messages in the pdf, centre figures at the page width and let LaTeX place each one at the top or bottom of a page, or on a page of figures, so that no page is left half empty
 if(!require("pacman")) install.packages("pacman") # make sure the package loader is available
-pacman::p_load(tidyverse, lubridate, tbl2xts, PerformanceAnalytics, RcppRoll, fmxdat, glue) # load the packages used throughout this question
-list.files("../../code/Question2/", full.names = T, recursive = T) %>% .[grepl(".R", .)] %>% as.list() %>% walk(~source(.)) # source every function written for this question from the root code folder
+pacman::p_load(tidyverse, lubridate, xts, tbl2xts, PerformanceAnalytics, RcppRoll, fmxdat, rmsfuns, glue) # load the packages used throughout this question
+options(dplyr.summarise.inform = F) # stop summarise from printing grouping messages
+c("../../code/Question1/", "../../code/Question2/") %>% map(~list.files(.x, full.names = T, recursive = T)) %>% unlist() %>% .[grepl(".R", .)] %>% as.list() %>% walk(~source(.)) # source the functions of this question and the shared helpers of question 1 from the root code folder
 ```
 
-# Introduction
+```{r data, include=FALSE}
+Size_Idx <- read_rds("../../data/Monthly_Index_Constituents.rds") # monthly constituents and weights of the Capped SWIX and the size indexes
+Stock_Returns <- read_rds("../../data/Stock_Returns_Daily.rds") # daily stock returns
+Idx_Daily <- read_rds("../../data/Index_Returns_Daily.rds") # daily returns of the published local indexes
+Implied_Vol <- read_rds("../../data/Implied_Vol_Indexes.rds") # implied volatility indexes, including the VIX
+Local_Cncy_Vol_Index <- read_rds("../../data/LCL_Currency_Vol_Index.rds") # the SAVIUSD index of rand volatility
+STeFI <- read_rds("../../data/STeFI_Index.rds") # the local cash index, used as the risk free rate
+```
 
-To be written.
+```{r calcs, include=FALSE}
+Size_Hold <- Size_Holdings_Prep(Size_Idx) # readable index names, a label for missing sectors and weights rescaled to sum to one
+Sector_Facts <- Size_Hold %>% filter(date %in% c(min(date), max(date))) %>% group_by(Fund, date, Sector) %>% summarise(W = sum(Weight), .groups = "drop") %>% mutate(Key = paste(Fund, lubridate::year(date), Sector)) # sector weights in the first and last month
+Size_Conc <- Concentration_Calc(Size_Hold, Top_N = 10) # concentration measures in every month
+Conc_Facts <- Size_Conc %>% filter(date %in% c(min(date), max(date))) %>% mutate(Key = paste(Fund, ifelse(date == min(date), "First", "Last"))) # concentration in the first and last month
+Conc_Avg <- Size_Conc %>% group_by(Fund) %>% summarise(Eff_N = mean(Eff_N), Top_Share = mean(Top_Share)) # full sample averages
+CFR_Facts <- Size_Hold %>% filter(Fund == "Large Caps", Tickers == "CFR", date %in% lubridate::ymd(c(20230531, 20230630))) %>% mutate(Key = format(date, "%B")) # Richemont's weight either side of June 2023
+Overlap <- Size_Hold %>% filter(Fund %in% c("Large Caps", "Mid Caps")) %>% group_by(date) %>% summarise(Mid_Share = sum(Weight[Fund == "Mid Caps" & Tickers %in% Tickers[Fund == "Large Caps"]]), N_Shared = sum(Fund == "Mid Caps" & Tickers %in% Tickers[Fund == "Large Caps"]), .groups = "drop") # mid-cap weight in stocks that are also large-cap constituents
+Overlap_Start <- Overlap %>% filter(Mid_Share > 0) %>% pull(date) %>% min() # the first month with a shared stock
+Size_AS <- Active_Share_Calc(Size_Hold, BM = "Capped SWIX") # active share against the Capped SWIX
+AS_Facts <- Size_AS %>% group_by(Fund) %>% summarise(Avg = mean(Active_Share), Pre = mean(Active_Share[date < lubridate::ymd(20230601)]), Post = mean(Active_Share[date >= lubridate::ymd(20230601)]), Last = dplyr::last(Active_Share)) # average active share before and after June 2023
+Size_Dates <- Size_Hold %>% filter(date >= lubridate::ymd(20150401)) %>% distinct(date) %>% pull(date) # month ends with three months of daily returns behind them
+Size_Vol <- Size_Vol_Calc(Size_Hold, Stock_Returns, Size_Dates, Lookback = 63, Ret_Cap = 0.25, Min_Coverage = 0.8) # constituent volatility, index volatility and the diversification ratio
+Vol_Facts <- Size_Vol %>% mutate(Period = case_when(lubridate::year(date) == 2026 ~ "2026", date >= lubridate::ymd(20200301) & date <= lubridate::ymd(20200630) ~ "Covid", TRUE ~ "Other")) %>% group_by(Fund, Period) %>% summarise(Avg_Vol = mean(Avg_Vol), DR = mean(Div_Ratio), .groups = "drop") %>% mutate(Key = paste(Fund, Period)) # averages by period
+Vol_Avg <- Size_Vol %>% group_by(Fund) %>% summarise(Avg_Vol = mean(Avg_Vol), Index_Vol = mean(Index_Vol), DR = mean(Div_Ratio)) # full sample averages
+Size_Pub <- Idx_Daily %>% filter(Tickers %in% c("J433", "J200", "J201", "J202")) %>% mutate(Name = recode(Name, "Top 40" = "Large Caps", MidCaps = "Mid Caps", SmallCaps = "Small Caps")) %>% select(date, Name, Returns) # daily returns of the published indexes
+Size_Monthly <- Monthly_Returns_Calc(Size_Pub) # monthly returns of the published indexes
+Thin_Facts <- Size_Pub %>% group_by(Name) %>% summarise(Vol_Daily = sd(Returns) * sqrt(252), .groups = "drop") %>% left_join(Size_Monthly %>% arrange(date) %>% group_by(Name) %>% summarise(Vol_Monthly = sd(Returns) * sqrt(12), AC1 = cor(Returns, dplyr::lag(Returns), use = "complete.obs"), .groups = "drop"), by = "Name") # daily and monthly volatility and monthly autocorrelation
+Size_Stats <- Fund_Stats_Table(Size_Pub, BM_Name = "Capped SWIX", Rf_df = STeFI) # return, risk and capture statistics against the Capped SWIX
+Size_Periods <- tibble(Period = c("2015-2019", "2020-2022", "2023-2026"), Start = lubridate::ymd(c(20150101, 20200101, 20230101)), End = lubridate::ymd(c(20191231, 20221231, 20261231))) # the three sub-periods
+Period_Stats <- Size_Period_Calc(Size_Monthly, Size_Periods) %>% mutate(Key = paste(Name, Period)) # risk and return in each sub-period
+Size_Roll <- Roll_Return_Calc(Size_Monthly, NSel = 36) # rolling three year annualised returns
+Roll_Wide <- Size_Roll %>% select(date, Name, RollRet) %>% spread(Name, RollRet) # one column per index
+Roll_Facts <- Size_Roll %>% group_by(Name) %>% summarise(Min = min(RollRet), Max = max(RollRet), Min_Date = date[which.min(RollRet)], Max_Date = date[which.max(RollRet)], .groups = "drop") # the range of each index
+Size_States <- bind_rows(State_Monthly_Calc(Level_df = bind_rows(Implied_Vol, Local_Cncy_Vol_Index %>% select(-Description)), Level_Sel = c("VIX", "SAVIUSD")), Size_Monthly %>% filter(Name == "Capped SWIX") %>% transmute(YM, State = "Market return", Value = Returns)) # the three monthly state variables
+Size_Strat <- Size_Stratify(Size_Monthly %>% filter(Name != "Capped SWIX"), Size_States, Hi_Q = 0.8, Lo_Q = 0.2) # returns and volatility in the top and bottom quintile months
+Strat_Facts <- Size_Strat %>% mutate(Key = paste(State, Regime, Name)) # keyed for the text
+```
 
-# Data
+# Introduction \label{Intro}
 
-To be written.
+Size indexes are often treated as interchangeable slices of the same market, differing only in the size of the companies they hold. This report shows that the local large, mid and small cap indexes are in fact distinct portfolios, with different sector bets, levels of concentration, distances from the benchmark and responses to market stress. Section \ref{Data} describes the data and methods. Section \ref{Holdings} compares what each index holds, Section \ref{Vol} measures the realised volatility of the constituents, Section \ref{Returns} compares the risk and return profiles of the indexes and Section \ref{Strat} stratifies their behaviour by market regime. Section \ref{Conclusion} concludes.
 
-# Results
+# Data and Methods \label{Data}
 
-To be written.
+The analysis uses the monthly constituents and weights of the large, mid and small cap indexes and the Capped SWIX from January 2007, daily stock returns from January 2015, and the published daily returns of the Top 40, Mid Cap, Small Cap and Capped SWIX indexes over the same period. Weights are rescaled to sum to one in every month, and stocks without a sector are labelled unclassified. Concentration is measured by the effective number of stocks, the inverse of the Herfindahl index of weights, and active share by half the sum of absolute weight differences against the Capped SWIX. Realised volatility is measured over trailing 63 trading day windows at every month end, both for each constituent and for the index built from them, with daily stock returns winsorised at 25 percent. Rolling three year returns and stratification by the quintiles of three monthly state variables, namely the Capped SWIX return, the SAVIUSD index of rand volatility and the VIX, follow the course practicals.
 
-# Conclusion
+# What the Indexes Hold \label{Holdings}
 
-To be written.
+## Sector Exposure
 
+Figure \ref{fig:sectors} shows that the three indexes are different bets on the local economy. The large caps carry most of the market's resource exposure, at `r Fact_Pull(Sector_Facts, "Large Caps 2026 Resources", "W", Key_Col = "Key", Pct = 1)` of the index in August 2026, led by the gold miners. The mid caps began the sample as an industrials index, with `r Fact_Pull(Sector_Facts, "Mid Caps 2007 Industrials", "W", Key_Col = "Key", Pct = 1)` of their weight in that sector, and have since spread across sectors. The small caps are the most domestic, with property growing from `r Fact_Pull(Sector_Facts, "Small Caps 2007 Property", "W", Key_Col = "Key", Pct = 1)` to `r Fact_Pull(Sector_Facts, "Small Caps 2026 Property", "W", Key_Col = "Key", Pct = 1)` of the index and resources at only `r Fact_Pull(Sector_Facts, "Small Caps 2026 Resources", "W", Key_Col = "Key", Pct = 1)`, so they depend on local growth and interest rates far more than on the commodity cycle.
+
+```{r sectors, fig.width = 10, fig.height = 5.5, fig.cap = "Sector exposure of the size indexes and the Capped SWIX"}
+Plot_Size_Sectors(Size_Hold, Title = "Sector Exposure by Size Index", Subtitle = "Large caps carry the market's resource exposure while small caps lean on property and the domestic economy", Caption = "Note:\nMonthly index weights summed by sector. Unclassified stocks have no sector in the constituent file. Calculation own.") # stacked sector weights of every index
+```
+
+## Stock Concentration
+
+Concentration falls as company size falls. Figure \ref{fig:concentration} shows that the large caps averaged an effective number of only `r Fact_Pull(Conc_Avg, "Large Caps", "Eff_N", Key_Col = "Fund", Digits = 0)` stocks, against `r Fact_Pull(Conc_Avg, "Small Caps", "Eff_N", Key_Col = "Fund", Digits = 0)` for the small caps. The large-cap jump in June 2023 came from one stock, as Richemont's weight fell from `r Fact_Pull(CFR_Facts, "May", "Weight", Key_Col = "Key", Pct = 1)` to `r Fact_Pull(CFR_Facts, "June", "Weight", Key_Col = "Key", Pct = 1)`. The mid caps moved the other way, from an effective number of `r Fact_Pull(Conc_Facts, "Mid Caps First", "Eff_N", Key_Col = "Key", Digits = 0)` stocks in 2007 to `r Fact_Pull(Conc_Facts, "Mid Caps Last", "Eff_N", Key_Col = "Key", Digits = 0)` in 2026. From `r format(Overlap_Start, "%B %Y")` they also began to hold large-cap constituents, and by August 2026 the `r dplyr::last(Overlap$N_Shared)` shared names made up `r Pct_Text(dplyr::last(Overlap$Mid_Share))` of mid-cap weight.
+
+```{r concentration, fig.height = 5, fig.cap = "Effective number of stocks in each index"}
+Plot_Size_Concentration(Size_Conc, Overlap_From = Overlap_Start, Overlap_Y = 20, Title = "Stock Concentration by Size Index", Subtitle = "Large caps are the most concentrated index, while mid caps have become steadily more concentrated since 2019", Caption = "Note:\nEffective number of stocks is the inverse of the Herfindahl index of monthly weights. Calculation own.") # concentration through time with the overlap period shaded
+```
+
+## Active Share Against the Capped SWIX
+
+Figure \ref{fig:activeshare} measures how far each index departs from the Capped SWIX. The large caps averaged an active share of `r Fact_Pull(AS_Facts, "Large Caps", "Pre", Key_Col = "Fund", Pct = 1)` before June 2023 and `r Fact_Pull(AS_Facts, "Large Caps", "Post", Key_Col = "Fund", Pct = 1)` after it, which makes the index close to a copy of the benchmark. The mid caps averaged `r Fact_Pull(AS_Facts, "Mid Caps", "Avg", Key_Col = "Fund", Pct = 1)`, dipping between 2021 and 2024 as their overlap with the large caps grew, while the small caps averaged `r Fact_Pull(AS_Facts, "Small Caps", "Avg", Key_Col = "Fund", Pct = 1)`. Only the small caps therefore offer a portfolio that is genuinely different from the benchmark.
+
+```{r activeshare, fig.height = 5, fig.cap = "Active share of the size indexes against the Capped SWIX"}
+Plot_Active_Share(Size_AS, Title = "Active Share Against the Capped SWIX", Subtitle = "The large-cap index has become a near copy of the benchmark, while small caps share almost nothing with it", Caption = "Note:\nHalf the sum of absolute weight differences against the Capped SWIX. Dashed lines are full sample averages. Calculation own.") # active share through time
+```
+
+# Realised Volatility of the Constituents \label{Vol}
+
+## Constituent and Index Volatility
+
+Figure \ref{fig:volatility} compares the weighted average realised volatility of each index's constituents with the volatility of the index itself. The small caps hold the most volatile stocks, at an average of `r Fact_Pull(Vol_Avg, "Small Caps", "Avg_Vol", Key_Col = "Fund", Pct = 1)` against `r Fact_Pull(Vol_Avg, "Large Caps", "Avg_Vol", Key_Col = "Fund", Pct = 1)` for the large caps, yet they form the calmest index, at `r Fact_Pull(Vol_Avg, "Small Caps", "Index_Vol", Key_Col = "Fund", Pct = 1)` against `r Fact_Pull(Vol_Avg, "Large Caps", "Index_Vol", Key_Col = "Fund", Pct = 1)`. Their diversification ratio of `r Fact_Pull(Vol_Avg, "Small Caps", "DR", Key_Col = "Fund", Digits = 1)` against `r Fact_Pull(Vol_Avg, "Large Caps", "DR", Key_Col = "Fund", Digits = 1)` for the large caps reflects stocks driven by their own news, while large-cap stocks share commodity, currency and global risk drivers. The benefit is fragile. In the Covid crash average small-cap stock volatility reached `r Fact_Pull(Vol_Facts, "Small Caps Covid", "Avg_Vol", Key_Col = "Key", Pct = 1)` and the diversification ratio fell to `r Fact_Pull(Vol_Facts, "Small Caps Covid", "DR", Key_Col = "Key", Digits = 1)`, and in 2026 it slipped to `r Fact_Pull(Vol_Facts, "Small Caps 2026", "DR", Key_Col = "Key", Digits = 1)` while the gold miners pushed average large-cap stock volatility to `r Fact_Pull(Vol_Facts, "Large Caps 2026", "Avg_Vol", Key_Col = "Key", Pct = 1)`.
+
+```{r volatility, fig.width = 10, fig.height = 5.5, fig.cap = "Average constituent volatility and index volatility"}
+Plot_Size_Diversification(Size_Vol, Smooth_N = 3, Title = "Constituent and Index Volatility by Size", Subtitle = "Small caps hold the most volatile stocks but form the calmest index, as their risks largely cancel out", Caption = "Note:\nRolling 63 day realised volatility at each month end, smoothed over three months. Orange is the weighted average constituent and black is the index. Calculation own.") # constituent and index volatility
+```
+
+## Thin Trading and Measured Volatility
+
+Part of the small caps' calm is a measurement effect. Thinly traded stocks often go days without a price change and then catch up, which smooths daily returns. The published small-cap index has a monthly return autocorrelation of `r Fact_Pull(Thin_Facts, "Small Caps", "AC1")` against `r Fact_Pull(Thin_Facts, "Large Caps", "AC1")` for the large caps, and it is the only index whose volatility is higher from monthly returns, at `r Fact_Pull(Thin_Facts, "Small Caps", "Vol_Monthly", Pct = 0.1)`, than from daily returns, at `r Fact_Pull(Thin_Facts, "Small Caps", "Vol_Daily", Pct = 0.1)`.
+
+# Risk and Return Profiles \label{Returns}
+
+## Full Sample and Sub-Period Profiles
+
+Between 2015 and 2026 the large caps delivered the best trade-off, with an annualised return of `r Fact_Pull(Size_Stats, "Large Caps", "Return (Ann.)", Pct = 0.1)`, a Sharpe ratio of `r Fact_Pull(Size_Stats, "Large Caps", "Sharpe Ratio")` and a maximum drawdown of `r Fact_Pull(Size_Stats, "Large Caps", "Max Drawdown", Pct = 0.1)`. The small caps returned `r Fact_Pull(Size_Stats, "Small Caps", "Return (Ann.)", Pct = 0.1)` with a down capture of only `r Fact_Pull(Size_Stats, "Small Caps", "Down Capture")`, yet their bear market beta of `r Fact_Pull(Size_Stats, "Small Caps", "Beta Bear")` shows that they fall one for one with the market in deep sell-offs, which produced the largest drawdown of any index, at `r Fact_Pull(Size_Stats, "Small Caps", "Max Drawdown", Pct = 0.1)`. The mid caps were the weakest, returning `r Fact_Pull(Size_Stats, "Mid Caps", "Return (Ann.)", Pct = 0.1)` with a bull beta of `r Fact_Pull(Size_Stats, "Mid Caps", "Beta Bull")` and a bear beta of `r Fact_Pull(Size_Stats, "Mid Caps", "Beta Bear")`.
+
+Figure \ref{fig:riskreturn} shows that these averages hide large shifts. The small caps moved from the worst profile between 2015 and 2019, a return of `r Fact_Pull(Period_Stats, "Small Caps 2015-2019", "Ret", Key_Col = "Key", Pct = 0.1)`, to the best of any index in any period since 2023, a return of `r Fact_Pull(Period_Stats, "Small Caps 2023-2026", "Ret", Key_Col = "Key", Pct = 0.1)` with volatility of `r Fact_Pull(Period_Stats, "Small Caps 2023-2026", "Vol", Key_Col = "Key", Pct = 0.1)`. The mid caps were hit hardest between 2020 and 2022, with a drawdown of `r Fact_Pull(Period_Stats, "Mid Caps 2020-2022", "MDD", Key_Col = "Key", Pct = 0.1)`.
+
+```{r riskreturn, fig.width = 10, fig.height = 4.8, fig.cap = "Annualised risk and return of each index by sub-period"}
+Plot_Size_RiskReturn(Period_Stats, Title = "Risk and Return by Sub-Period", Subtitle = "Small caps moved from the worst to the best risk-return trade-off, while mid caps were hit hardest in 2020 to 2022", Caption = "Note:\nAnnualised from monthly returns of the published indexes. Point size shows the maximum drawdown. Calculation own.") # the path of each index through risk and return space
+```
+
+```{r rolling, fig.height = 3.9, fig.cap = "Rolling three year annualised returns"}
+Plot_Size_Rolling(Size_Roll, Title = "Rolling 3 Year Annualised Returns", Subtitle = "Small caps have the widest range of outcomes and have led large caps for most of the period since 2022", Caption = "Note:\nRolling 36 month annualised returns of the published indexes. Blue shading marks months in which small caps beat large caps. Calculation own.") # rolling returns with the small-cap lead shaded
+```
+
+## Rolling Returns
+
+The rolling three year returns in Figure \ref{fig:rolling} confirm that the small caps carry the widest range of outcomes, from `r Fact_Pull(Roll_Facts, "Small Caps", "Min", Pct = 0.1)` in `r format(Roll_Facts$Min_Date[Roll_Facts$Name == "Small Caps"], "%B %Y")` to `r Fact_Pull(Roll_Facts, "Small Caps", "Max", Pct = 0.1)` in `r format(Roll_Facts$Max_Date[Roll_Facts$Name == "Small Caps"], "%B %Y")`, while the worst three year return of the large caps was `r Fact_Pull(Roll_Facts, "Large Caps", "Min", Pct = 0.1)`. Small caps led large caps in `r Pct_Text(mean(Roll_Wide$"Small Caps" > Roll_Wide$"Large Caps", na.rm = TRUE))` of months, almost all from 2022 onwards, and the two have the least correlated rolling returns of any pair, at `r sprintf("%.2f", cor(Roll_Wide$"Small Caps", Roll_Wide$"Large Caps", use = "complete.obs"))`.
+
+# Behaviour Across Market Regimes \label{Strat}
+
+Figure \ref{fig:strat} compares each index in the bottom and top quintile months of three state variables, each containing `r min(Size_Strat$Months)` months. In the worst months for the benchmark the small caps lost at an annualised rate of `r Fact_Pull(Strat_Facts, "Market return Low Small Caps", "Ret_Ann", Key_Col = "Key", Pct = 1)` against `r Fact_Pull(Strat_Facts, "Market return Low Large Caps", "Ret_Ann", Key_Col = "Key", Pct = 1)` for the large caps, but with nearly twice the volatility, so their protection is real on average but unreliable. Rand volatility separates the indexes most clearly. When the rand is calm the small caps return `r Fact_Pull(Strat_Facts, "SAVIUSD Low Small Caps", "Ret_Ann", Key_Col = "Key", Pct = 1)`, the best of the three, and when it is volatile they return `r Fact_Pull(Strat_Facts, "SAVIUSD High Small Caps", "Ret_Ann", Key_Col = "Key", Pct = 1)`, the worst, which fits their domestic sector mix. The VIX raises the volatility of every index without changing returns much, except for the mid caps, whose return falls to `r Fact_Pull(Strat_Facts, "VIX High Mid Caps", "Ret_Ann", Key_Col = "Key", Pct = 1)` in high VIX months.
+
+```{r strat, fig.height = 5.4, fig.cap = "Returns and volatility of the size indexes in calm and stressed regimes"}
+Size_Strat %>% mutate(State = recode(State, "Market return" = "Capped SWIX return", SAVIUSD = "Rand volatility (SAVIUSD)", VIX = "US implied volatility (VIX)")) %>% Plot_Size_Slopes(Title = "Size Indexes in Calm and Stressed Regimes", Subtitle = "Small caps lose least when the market falls but suffer the largest losses when the rand is volatile", Caption = "Note:\nAnnualised return and volatility in the bottom and top quintile months of each state variable, from 2015. Calculation own.") # slopes from calm to stressed months
+```
+
+\FloatBarrier
+
+# Conclusion \label{Conclusion}
+
+The local size indexes are not interchangeable. The large-cap index is a concentrated, resource-heavy portfolio that is now close to a copy of the Capped SWIX, and it has delivered the best risk-adjusted return. The small-cap index is the only one that differs materially from the benchmark, a domestic, property-heavy portfolio of volatile but largely unrelated stocks that is calm in ordinary times and exposed in crises and periods of rand stress, with part of its calm explained by thin trading. The mid-cap index has drifted towards the large caps and has offered the weakest return with the least favourable asymmetry. An allocation to small caps therefore adds genuine diversification to a benchmark portfolio, but it should be sized for its crisis behaviour and its dependence on domestic conditions.

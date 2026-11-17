@@ -18,8 +18,8 @@ gc() # garbage collection, which hands memory back to the operating system after
 ```
 
     ##          used (Mb) gc trigger (Mb) limit (Mb) max used (Mb)
-    ## Ncells 500727 26.8    1072728 57.3         NA   715840 38.3
-    ## Vcells 957261  7.4    8388608 64.0      16384  2011380 15.4
+    ## Ncells 501226 26.8    1074154 57.4         NA   715840 38.3
+    ## Vcells 966709  7.4    8388608 64.0      16384  2011380 15.4
 
 ``` r
 library(tidyverse) # load the tidyverse for data wrangling and plotting
@@ -175,8 +175,8 @@ of September 2026 volatility on the Capped SWIX had fallen back to 15
 percent, a level exceeded on 51 percent of days since 2015. Emerging
 market volatility followed a similar path at a higher level, peaking at
 31 percent, while the global index peaked at only 15 percent. The
-evidence points to a volatility episode rather than a lasting shift to a
-higher level of local volatility.
+evidence points to a temporary volatility episode, with no sign of a
+lasting shift to a higher level of local volatility.
 
 ### A Heatmap of Monthly Volatility
 
@@ -227,8 +227,8 @@ GARCH, GJR, EGARCH and APARCH, each with an AR(1) mean equation and
 student t errors, and retains the model with the lowest AIC. The
 ridgeline plot then shows the full distribution of each index’s daily
 conditional volatility within every year, with a line at each year’s
-median, which reveals shifts in the whole distribution rather than in a
-single average.
+median, which reveals shifts in the whole distribution that a single
+average would hide.
 
 ``` r
 Garch_Sigma <- c("Capped SWIX", "MSCI_ACWI", "MSCI_EM") %>% map_df(~Best_Garch_Sigma(All_Rets, Series = .x)) # fit the best GARCH model to each index and stack the conditional volatility series
@@ -411,18 +411,18 @@ between 4 and 6 percentage points to the Top 40 nonetheless survives
 into the worst regimes, much like the gap of 4.7 points over the full
 sample. Two caveats apply to this result. Small caps trade less
 frequently, and stale prices tend to understate measured volatility, so
-part of their apparent calm may reflect illiquidity rather than genuine
-stability. Lower volatility also says nothing about the depth of
-drawdowns or the cost of trading these shares in a crisis. The Top 40,
-by contrast, is the most volatile segment in both the emerging market
-and VIX regimes, at 28 and 27 percent, which is consistent with its
-heavy weight in globally exposed resource and rand hedge shares.
+part of their apparent calm may simply reflect illiquidity. Lower
+volatility also says nothing about the depth of drawdowns or the cost of
+trading these shares in a crisis. The Top 40, by contrast, is the most
+volatile segment in both the emerging market and VIX regimes, at 28 and
+27 percent, which is consistent with its heavy weight in globally
+exposed resource and rand hedge shares.
 
 ### Conclusion to Part A
 
 Local volatility has increased, subject to three qualifications. The
 increase took the form of an episode, peaking in March and April 2026
-and subsiding by the third quarter, rather than a permanent rise in the
+and subsiding by the third quarter, and not as a permanent rise in the
 level of volatility. It did not mirror the global experience, since
 developed market volatility stayed below its average throughout 2026,
 and instead followed emerging markets and the oil market. It also did
@@ -432,7 +432,7 @@ emerging markets fell. The local market reacts less sharply to bad news
 than global markets do, which suggests a degree of built-in resilience.
 
 For a team considering a risk ballast in a local fund, the relevant
-threat is therefore a commodity and emerging market shock rather than a
+threat is therefore a commodity and emerging market shock, more than a
 developed market sell-off, and a ballast calibrated only to developed
 market stress would have missed the 2026 episode. Within the local
 market, small caps offer the most natural ballast in absolute terms,
@@ -526,10 +526,10 @@ suffered almost the full extent of the benchmark’s losses in falling
 months. The fund’s protective features are modest. Its maximum drawdown
 of 27.8 percent was shallower than the benchmark’s 31.2 percent, and its
 modified CVaR was marginally lower. The outperformance therefore came
-from stock selection in rising markets, with an up capture of 1.09,
-rather than from protection in falling ones. The more recent period is
-less flattering still. Since 2020 the fund’s down capture has risen to
-1.09, so it has lost more than the benchmark in falling months, and its
+from stock selection in rising markets, with an up capture of 1.09, and
+not from protection in falling ones. The more recent period is less
+flattering still. Since 2020 the fund’s down capture has risen to 1.09,
+so it has lost more than the benchmark in falling months, and its
 information ratio has fallen to 0.27.
 
 ### Rolling Volatility Relative to the Benchmark
@@ -551,15 +551,15 @@ Plot_Roll_Vol_Gap(Port_Daily, Fund = "SafeCore", BM = "Capped SWIX", NSel = 252,
 
 ![](README_files/figure-markdown_github/q1b_rolling-1.png)
 
-The figure shows that SafeCore’s excess volatility is persistent rather
-than episodic. The gap strip is red on 91 percent of days since the
-rolling window begins in 2016, by an average of 0.5 percentage points,
-and it widened again from late 2025 as rolling volatility for both rose
-towards 20 percent. The only sustained blue stretch, in which SafeCore
-was calmer, came in 2017. The gap is small in absolute terms, but its
-persistence is telling, since a fund that managed volatility
-deliberately would be expected to sit below its benchmark at least some
-of the time.
+The figure shows that SafeCore’s excess volatility is persistent, and
+not confined to a few episodes. The gap strip is red on 91 percent of
+days since the rolling window begins in 2016, by an average of 0.5
+percentage points, and it widened again from late 2025 as rolling
+volatility for both rose towards 20 percent. The only sustained blue
+stretch, in which SafeCore was calmer, came in 2017. The gap is small in
+absolute terms, but its persistence is telling, since a fund that
+managed volatility deliberately would be expected to sit below its
+benchmark at least some of the time.
 
 A ballast should also earn its keep when markets are stressed, so the
 stratification from Part A is repeated for SafeCore and its benchmark.
@@ -686,10 +686,10 @@ Scores_All <-
 
 The comparison uses the Spearman rank correlation across stocks each
 month, since what matters for a factor portfolio is whether two scores
-rank stocks in the same order rather than whether their values coincide.
-The left panel tracks three comparisons through time, labelled directly
-at the end of each line, while the heatmap on the right reports the
-average rank correlation between every own measure and every vendor
+rank stocks in the same order, regardless of whether their values
+coincide. The left panel tracks three comparisons through time, labelled
+directly at the end of each line, while the heatmap on the right reports
+the average rank correlation between every own measure and every vendor
 factor, which shows what each vendor factor actually tracks.
 
 ``` r
@@ -707,7 +707,7 @@ Score_Diag <-
     mutate(Own = factor(recode(Own, !!!Own_Names), levels = rev(Own_Names))) # readable names in a fixed order
 Plot_Score_Cor(Score_Cor, Diag = Score_Diag, # the time series and the diagnostic heatmap side by side
                Title = "Own Scores Against the Vendor's Scores", # the plot title
-               Subtitle = "Vendor momentum matches a 12-1 definition almost exactly, while its volatility score tracks downside beta rather than volatility", # the main message
+               Subtitle = "Vendor momentum matches a 12-1 definition almost exactly, while its volatility score tracks downside beta, not volatility", # the main message
                Caption = "Note:\nMonthly Spearman rank correlations across stocks. Dashed lines show averages. The heatmap averages each combination over all months. Calculation own.") # the note under the plot
 ```
 
@@ -833,17 +833,16 @@ SafeCore does not navigate volatility effectively, although it has been
 successful on other measures. The fund outperformed the Capped SWIX by
 2.5 percentage points a year with an information ratio of 0.61, and its
 drawdowns were somewhat shallower. That success came from stock
-selection in rising markets rather than from risk management. The fund
-has been slightly more volatile than its benchmark on 91 percent of
-days, it matches the benchmark’s volatility in stressed regimes rather
-than reducing it, it has lost more than the benchmark in falling months
-since 2020, and it carries no meaningful low volatility exposure. Its
-risk has also become highly concentrated, with two gold miners
-generating 45 percent of the fund’s volatility at the latest holdings
-date.
+selection in rising markets, not from risk management. The fund has been
+slightly more volatile than its benchmark on 91 percent of days, it
+merely matches the benchmark’s volatility in stressed regimes, it has
+lost more than the benchmark in falling months since 2020, and it
+carries no meaningful low volatility exposure. Its risk has also become
+highly concentrated, with two gold miners generating 45 percent of the
+fund’s volatility at the latest holdings date.
 
 For the team, three implications follow. The fund’s risk is currently a
-concentrated bet on precious metals rather than a broad equity exposure,
+concentrated bet on precious metals, far from a broad equity exposure,
 which the investment committee should either accept explicitly or
 reduce. A low volatility sleeve or a cap on any single stock’s
 contribution to risk would be a more direct route to a risk ballast than
@@ -1058,7 +1057,7 @@ equity volatility coincides with wider dispersion, while policy
 uncertainty and oil volatility show almost no relationship at all. The
 2026 months sit across the range of every variable, which again suggests
 that the 2026 episode was driven by events specific to the largest local
-stocks rather than by a single global factor.
+stocks, with no single global factor behind it.
 
 Because the macro variables are themselves related, a multiple
 regression is needed to isolate the effect of each. Both dispersion and
@@ -1101,8 +1100,8 @@ reaches a market price.
 
 ### Conclusion to Part C
 
-The alpha opportunity in the local market since 2020 has been episodic
-rather than trending. Weighted dispersion has hovered around 8 to 9
+The alpha opportunity in the local market since 2020 has been episodic,
+with no clear trend. Weighted dispersion has hovered around 8 to 9
 percent, punctuated by sharp spikes when heavyweight stocks made large
 idiosyncratic moves, and the most favourable environment for stock
 pickers came in mid 2025, when correlations fell below 0.1 and more than
@@ -1127,9 +1126,352 @@ correlations rise.
 
 # Question 2, Mid, Small and Large Cap Indices
 
+## Approach
+
+This question compares the traits of the three local size indexes, the
+large, mid and small caps, against the Capped SWIX as the full
+benchmark. The analysis draws on two sources. The monthly constituent
+file gives the holdings and weights of each index from January 2007,
+which show what each index owns, how concentrated it is and how far it
+departs from the benchmark. The daily stock returns, which start in
+January 2015, are then applied to those holdings to measure how volatile
+the constituents are and how much of that volatility survives once they
+are combined into an index. The published daily returns of the Top 40,
+Mid Cap and Small Cap indexes complete the picture of each index’s risk
+and return profile through rolling returns, a comparison across
+sub-periods and stratification by market conditions.
+
+The section is ordered in three steps. It first establishes what each
+index holds, through sector exposure, stock concentration and active
+share. It then measures the realised volatility of the constituents and
+the share of it that diversification removes. Finally, it asks how each
+index has rewarded that risk over time and across calm and stressed
+markets. Stocks without a sector in the constituent file are labelled
+unclassified, and weights are rescaled to sum to one in every month,
+since the reported weights do not always do so.
+
 ``` r
 Size_Idx <- read_rds("data/Monthly_Index_Constituents.rds") # monthly constituents and weights for the Capped SWIX and the large, mid and small cap indexes
+Size_Hold <- Size_Holdings_Prep(Size_Idx) # readable index names, a label for missing sectors and weights rescaled to sum to one in every month
 ```
+
+## Sector Exposure
+
+The first trait is what each index is exposed to. The figure stacks the
+sector weights of every index through time, using the same sector
+colours as Question 1, so that each panel reads as the sector story of
+one index.
+
+``` r
+Sector_Facts <- Size_Hold %>% filter(date %in% c(min(date), max(date))) %>% group_by(Fund, date, Sector) %>% summarise(W = sum(Weight), .groups = "drop") %>% mutate(Key = paste(Fund, lubridate::year(date), Sector)) # sector weights in the first and last month, used in the text
+Plot_Size_Sectors(Size_Hold, # the stacked sector weights of every index
+                  Title = "Sector Exposure by Size Index", # the plot title
+                  Subtitle = "Large caps carry the market's resource exposure while small caps lean on property and the domestic economy", # the main message
+                  Caption = "Note:\nMonthly index weights summed by sector. Unclassified stocks have no sector in the constituent file. Calculation own.") # the note under the plot
+```
+
+![](README_files/figure-markdown_github/q2_sectors-1.png)
+
+The three indexes are different bets on the South African economy. The
+large-cap index carries most of the market’s resource exposure, with
+resources at 49 percent of the index in January 2007 and 37 percent in
+August 2026, after the gold rally of 2026 lifted Gold Fields and
+AngloGold Ashanti to the top of the index. Its returns therefore depend
+heavily on global commodity prices and on the offshore earnings of its
+largest industrials. The mid-cap index began the sample as an
+industrials index, with 76 percent of its weight in that sector, and has
+since spread across financials, resources and property. The small-cap
+index is the most domestic of the three. Property has grown from 12
+percent to 31 percent of the index, while resources make up only 9
+percent. Small caps are therefore the most exposed to local growth,
+interest rates and the property cycle, and the least exposed to the
+commodity cycle that dominates the large caps. A large unclassified
+share, which still stands at 15 percent, limits how finely the small-cap
+sector mix can be read.
+
+## Stock Concentration
+
+Stock concentration is measured by the effective number of stocks, the
+inverse of the Herfindahl index of weights. An index with an effective
+number of 20 carries the same concentration as one holding 20 stocks in
+equal weights, regardless of how many it actually holds, which makes the
+measure comparable across indexes of different sizes.
+
+``` r
+Size_Conc <- Concentration_Calc(Size_Hold, Top_N = 10) # the number of stocks, effective number of stocks, top 10 share and effective number of sectors in every month
+Conc_Facts <- Size_Conc %>% filter(date %in% c(min(date), max(date))) %>% mutate(Key = paste(Fund, ifelse(date == min(date), "First", "Last"))) # concentration in the first and last month, used in the text
+Conc_Avg <- Size_Conc %>% group_by(Fund) %>% summarise(Eff_N = mean(Eff_N), Top_Share = mean(Top_Share), Eff_Sectors = mean(Eff_Sectors)) # averages over the full sample, used in the text
+CFR_Facts <- Size_Hold %>% filter(Fund == "Large Caps", Tickers == "CFR", date %in% lubridate::ymd(c(20230531, 20230630))) %>% mutate(Key = format(date, "%B")) # Richemont's large-cap weight either side of its reweighting in June 2023
+Overlap <- Size_Hold %>% filter(Fund %in% c("Large Caps", "Mid Caps")) %>% group_by(date) %>% summarise(Mid_Share = sum(Weight[Fund == "Mid Caps" & Tickers %in% Tickers[Fund == "Large Caps"]]), N_Shared = sum(Fund == "Mid Caps" & Tickers %in% Tickers[Fund == "Large Caps"]), .groups = "drop") # the share of mid-cap weight, and the number of mid-cap stocks, that are also large-cap constituents
+Overlap_Start <- Overlap %>% filter(Mid_Share > 0) %>% pull(date) %>% min() # the first month in which the two indexes share a stock
+Plot_Size_Concentration(Size_Conc, Overlap_From = Overlap_Start, Overlap_Y = 20, # the effective number of stocks in every index, with the overlap period shaded
+                        Title = "Stock Concentration by Size Index", # the plot title
+                        Subtitle = "Large caps are the most concentrated index, while mid caps have become steadily more concentrated since 2019", # the main message
+                        Caption = "Note:\nEffective number of stocks is the inverse of the Herfindahl index of monthly weights. Calculation own.") # the note under the plot
+```
+
+![](README_files/figure-markdown_github/q2_concentration-1.png)
+
+Concentration falls as company size falls. The large-cap index has
+averaged an effective number of only 15 stocks, with 66 percent of its
+weight in its ten largest holdings, against 43 stocks and 35 percent for
+the small caps. The jump in the large-cap line in June 2023 comes from a
+single stock, as Richemont’s weight fell from 24 percent to 4 percent of
+the index in one month, which lifted the effective number of stocks to
+above 20 and left the large caps far less exposed to one company. The
+mid caps moved the other way. Their effective number of stocks fell from
+35 in 2007 to 25 in 2026, close to the large caps. From September 2016
+the mid-cap index also began to hold stocks that sit in the large-cap
+index, starting with 3 names, and by August 2026 the 14 shared names
+made up 63 percent of mid-cap weight. The mid-cap index has therefore
+become less distinct from the large caps in both its concentration and
+its holdings, which matters for an investor who buys it as a separate
+source of return.
+
+## Active Share Against the Capped SWIX
+
+Active share measures how far an index’s holdings differ from the
+benchmark, as half the sum of absolute weight differences across all
+stocks. A value of zero means identical holdings, while a value of one
+means that the two hold no stock in common. It is the natural measure of
+whether a size index offers something the Capped SWIX does not.
+
+``` r
+Size_AS <- Active_Share_Calc(Size_Hold, BM = "Capped SWIX") # the active share of each size index against the Capped SWIX in every month
+AS_Facts <- Size_AS %>% group_by(Fund) %>% summarise(Avg = mean(Active_Share), Pre = mean(Active_Share[date < lubridate::ymd(20230601)]), Post = mean(Active_Share[date >= lubridate::ymd(20230601)]), Last = dplyr::last(Active_Share)) # average active share before and after June 2023, used in the text
+Plot_Active_Share(Size_AS, # the active share of each index through time
+                  Title = "Active Share Against the Capped SWIX", # the plot title
+                  Subtitle = "The large-cap index has become a near copy of the benchmark, while small caps share almost nothing with it", # the main message
+                  Caption = "Note:\nActive share is half the sum of absolute weight differences against the Capped SWIX. Dashed lines are full sample averages. Calculation own.") # the note under the plot
+```
+
+![](README_files/figure-markdown_github/q2_active_share-1.png)
+
+The three indexes sit at very different distances from the benchmark.
+The large caps averaged an active share of 29 percent before June 2023
+and only 15 percent after it, the same Richemont reweighting that
+changed their concentration. At 13 percent in August 2026, the large-cap
+index is close to a copy of the Capped SWIX, which is unsurprising given
+that the largest 40 stocks make up most of the benchmark’s weight. The
+mid caps averaged 79 percent, with a dip to around 70 percent between
+2021 and 2024 that matches their growing overlap with the large caps.
+The small caps averaged 95 percent, so almost all of their weight sits
+in stocks that are tiny or absent in the benchmark. Of the three, only
+the small caps offer a portfolio that is genuinely different from the
+Capped SWIX, and their risk and return should be judged with that in
+mind.
+
+## Realised Volatility of the Constituents
+
+The holdings are now combined with the daily stock returns to measure
+how volatile each index’s constituents are through time. At every month
+end from April 2015, the realised volatility of each constituent is
+measured over the trailing 63 trading days and averaged using the index
+weights. The same weights are applied to the daily returns to form the
+index return, whose realised volatility is measured over the same
+window. The ratio of the two is the diversification ratio, which shows
+how much of the stand-alone risk of the stocks disappears once they are
+held together. Daily stock returns larger than 25 percent in absolute
+value are winsorised, and a month is used only when at least 80 percent
+of the index weight has return data.
+
+``` r
+Size_Dates <- Size_Hold %>% filter(date >= lubridate::ymd(20150401)) %>% distinct(date) %>% pull(date) # month ends with at least three months of daily stock returns behind them
+Size_Vol <- Size_Vol_Calc(Size_Hold, Stock_Returns, Size_Dates, Lookback = 63, Ret_Cap = 0.25, Min_Coverage = 0.8) # average constituent volatility, index volatility and the diversification ratio at every month end
+Vol_Facts <- Size_Vol %>% mutate(Period = case_when(lubridate::year(date) == 2026 ~ "2026", date >= lubridate::ymd(20200301) & date <= lubridate::ymd(20200630) ~ "Covid", TRUE ~ "Other")) %>% group_by(Fund, Period) %>% summarise(Avg_Vol = mean(Avg_Vol), Index_Vol = mean(Index_Vol), DR = mean(Div_Ratio), .groups = "drop") %>% mutate(Key = paste(Fund, Period)) # averages in 2026, in the Covid crash and in all other months, used in the text
+Vol_Avg <- Size_Vol %>% group_by(Fund) %>% summarise(Avg_Vol = mean(Avg_Vol), Index_Vol = mean(Index_Vol), DR = mean(Div_Ratio)) # full sample averages, used in the text
+Plot_Size_Diversification(Size_Vol, Smooth_N = 3, # constituent and index volatility in every index
+                          Title = "Constituent and Index Volatility by Size", # the plot title
+                          Subtitle = "Small caps hold the most volatile stocks but form the calmest index, as their risks largely cancel out", # the main message
+                          Caption = "Note:\nRolling 63 day realised volatility at each month end, smoothed over three months. The shaded gap is the risk removed by diversification. Calculation own.") # the note under the plot
+```
+
+![](README_files/figure-markdown_github/q2_volatility-1.png)
+
+The figure reveals the most interesting trait of the small caps. Their
+constituents are the most volatile of the three indexes, at an average
+of 35 percent against 33 percent for the large caps, yet the small-cap
+index is the calmest, at 12 percent against 18 percent. The
+diversification ratio of the small caps averaged 3.1 against 1.9 for the
+large caps. Small-cap stocks are driven mostly by their own news, such
+as a single property portfolio or a regional retailer, so their shocks
+are largely unrelated and cancel out inside the index. Large-cap stocks
+share common drivers, namely commodity prices, the rand and global risk
+appetite, so far less of their risk diversifies away.
+
+That benefit is not stable. During the Covid crash between March and
+June 2020, average small-cap stock volatility reached 77 percent and the
+diversification ratio fell to 1.9, as every stock fell together. In 2026
+the pattern reversed between sizes. The gold miners pushed average
+large-cap stock volatility to 38 percent, above the 29 percent of
+small-cap stocks, while the small-cap diversification ratio slipped to
+2.4 from 3.1 in other months.
+
+Part of the small caps’ calm is also a measurement effect. Small stocks
+trade thinly, so their prices often go unchanged for days and then catch
+up, which smooths daily returns and understates volatility measured from
+them.
+
+``` r
+Size_Pub <- Idx_Daily %>% filter(Tickers %in% c("J433", "J200", "J201", "J202")) %>% mutate(Name = recode(Name, "Top 40" = "Large Caps", MidCaps = "Mid Caps", SmallCaps = "Small Caps")) %>% select(date, Name, Returns) # daily returns of the published Capped SWIX and size indexes, with the same names as the constituent indexes
+Size_Monthly <- Monthly_Returns_Calc(Size_Pub) # calendar month returns of each published index
+Thin_Facts <-
+    Size_Pub %>%
+    group_by(Name) %>% # one row per index
+    summarise(Vol_Daily = sd(Returns) * sqrt(252), .groups = "drop") %>% # annualised volatility measured from daily returns
+    left_join(Size_Monthly %>% arrange(date) %>% group_by(Name) %>% summarise(Vol_Monthly = sd(Returns) * sqrt(12), AC1 = cor(Returns, dplyr::lag(Returns), use = "complete.obs"), .groups = "drop"), by = "Name") # annualised volatility from monthly returns and the first order autocorrelation of monthly returns
+```
+
+The published small-cap index has a first order autocorrelation of 0.15
+in its monthly returns, against -0.08 for the large caps. It is also the
+only index whose volatility is higher when measured from monthly
+returns, at 15.0 percent, than from daily returns, at 14.0 percent,
+while the large caps show the reverse. Both are the signature of stale
+prices, so the daily figures above flatter the small caps somewhat and
+their true volatility sits closer to that of the other indexes.
+
+## Return and Risk Profiles
+
+The published indexes give a full record of returns from January 2015 to
+September 2026. Each size index is measured against the Capped SWIX,
+with the STeFI as the risk free rate, and the full sample is then split
+into three sub-periods. These are the weak years before Covid, the Covid
+crash and recovery between 2020 and 2022, and the recent period from
+2023.
+
+``` r
+Size_Stats <- Fund_Stats_Table(Size_Pub, BM_Name = "Capped SWIX", Rf_df = STeFI) # return, risk and capture statistics of each index against the Capped SWIX
+Size_Periods <- tibble(Period = c("2015-2019", "2020-2022", "2023-2026"), Start = lubridate::ymd(c(20150101, 20200101, 20230101)), End = lubridate::ymd(c(20191231, 20221231, 20261231))) # the three sub-periods
+Period_Stats <- Size_Period_Calc(Size_Monthly, Size_Periods) %>% mutate(Key = paste(Name, Period)) # annualised return, volatility and maximum drawdown in each sub-period
+Plot_Size_RiskReturn(Period_Stats, # the path of each index through risk and return space
+                     Title = "Risk and Return by Sub-Period", # the plot title
+                     Subtitle = "Small caps moved from the worst to the best risk-return trade-off, while mid caps were hit hardest in 2020 to 2022", # the main message
+                     Caption = "Note:\nAnnualised from monthly returns of the published indexes. Point size shows the maximum drawdown. Grey paths show the other indexes. Calculation own.") # the note under the plot
+```
+
+![](README_files/figure-markdown_github/q2_risk_return-1.png)
+
+Over the full sample, the large caps delivered the best trade-off, with
+an annualised return of 10.9 percent, a Sharpe ratio of 0.77 and the
+shallowest maximum drawdown, at 19.9 percent. The small caps earned
+almost as much, at 10.3 percent, with a beta of only 0.68 and a down
+capture of 0.48, so on average they lost less than half of what the
+benchmark lost in its down months. Their bear market beta of 1.03 tells
+a less comfortable story, however. In ordinary down months small caps
+hold up, but in a deep sell-off they fall one for one with the market,
+which is how they suffered the largest drawdown of any index, at 45.6
+percent. The mid caps were the weakest, with a return of 7.3 percent, a
+Sharpe ratio of 0.53 and the worst asymmetry of all, a bull beta of 0.55
+against a bear beta of 1.07.
+
+The sub-periods show that these averages hide large shifts. The small
+caps returned -0.4 percent a year between 2015 and 2019, the worst of
+any index, then 19.5 percent in the volatile recovery, and 18.4 percent
+since 2023 with volatility of only 10.9 percent and a maximum drawdown
+of 8.2 percent, the best profile of any index in any period. The mid
+caps were hit hardest between 2020 and 2022, earning 3.9 percent with a
+drawdown of 35.6 percent. The returns of the large caps improved
+steadily across all three periods.
+
+## Rolling Returns
+
+Rolling returns show how the ranking of the indexes has changed from one
+investment horizon to the next. The figure plots rolling three year
+annualised returns, following Practical 1, and shades the months in
+which small caps were ahead of large caps.
+
+``` r
+Size_Roll <- Roll_Return_Calc(Size_Monthly, NSel = 36) # rolling three year annualised returns of each index
+Roll_Wide <- Size_Roll %>% select(date, Name, RollRet) %>% spread(Name, RollRet) # one column per index
+Roll_Facts <- Size_Roll %>% group_by(Name) %>% summarise(Min = min(RollRet), Max = max(RollRet), Min_Date = date[which.min(RollRet)], Max_Date = date[which.max(RollRet)], Last = dplyr::last(RollRet), .groups = "drop") # the range and latest value of each index, used in the text
+Plot_Size_Rolling(Size_Roll, # rolling returns with the small-cap lead shaded
+                  Title = "Rolling 3 Year Annualised Returns", # the plot title
+                  Subtitle = "Small caps have the widest range of outcomes and have led large caps for most of the period since 2022", # the main message
+                  Caption = "Note:\nRolling 36 month annualised returns of the published indexes. Blue shading marks months in which small caps beat large caps. Calculation own.") # the note under the plot
+```
+
+![](README_files/figure-markdown_github/q2_rolling-1.png)
+
+Small caps have the widest range of three year outcomes, from -18.4
+percent in March 2020 to 36.6 percent in March 2023, while the worst
+three year return of the large caps was -0.4 percent. An investor who
+bought small caps in early 2017 and held them for three years would have
+lost money, even though the index looked calm on a daily basis
+throughout. The two segments led in turn, with small caps ahead in 50
+percent of months, 98 percent of them from 2022 onwards. The rolling
+returns of small and large caps have a correlation of 0.82, the lowest
+of any pair, so over a three year horizon the small caps are the size
+segment that most changes the outcome of a portfolio built around the
+benchmark.
+
+## Stratification
+
+The final step asks how each index behaves in different market
+conditions, following the stratification practical. Months are sorted
+into quintiles of three state variables, and the annualised return and
+volatility of each index are compared between the bottom and top
+quintile. The state variables are the monthly return of the Capped SWIX,
+rand volatility measured by the monthly average of the SAVIUSD index,
+and global risk aversion measured by the monthly average of the VIX.
+
+``` r
+Size_States <- bind_rows(State_Monthly_Calc(Level_df = bind_rows(Implied_Vol, Local_Cncy_Vol_Index %>% select(-Description)), Level_Sel = c("VIX", "SAVIUSD")), # the monthly average level of the VIX and the SAVIUSD
+                         Size_Monthly %>% filter(Name == "Capped SWIX") %>% transmute(YM, State = "Market return", Value = Returns)) # the monthly return of the benchmark as a third state
+Size_Strat <- Size_Stratify(Size_Monthly %>% filter(Name != "Capped SWIX"), Size_States, Hi_Q = 0.8, Lo_Q = 0.2) # annualised return and volatility of each size index in the top and bottom quintile months
+Strat_Facts <- Size_Strat %>% mutate(Key = paste(State, Regime, Name)) # a key for the inline numbers in the text
+Size_Strat %>%
+    mutate(State = recode(State, "Market return" = "Capped SWIX return", SAVIUSD = "Rand volatility (SAVIUSD)", VIX = "US implied volatility (VIX)")) %>% # readable panel names
+    Plot_Size_Slopes(Title = "Size Indexes in Calm and Stressed Regimes", # slopes from the bottom to the top quintile of each state
+                     Subtitle = "Small caps lose least when the market falls but are the most exposed to a volatile rand", # the main message
+                     Caption = "Note:\nAnnualised return and volatility of monthly returns in the bottom and top quintile months of each state variable, from 2015. Calculation own.") # the note under the plot
+```
+
+![](README_files/figure-markdown_github/q2_stratify-1.png)
+
+Each quintile contains 29 months. The stratification adds detail to the
+capture statistics. In the worst fifth of months for the benchmark, the
+small caps lost at an annualised rate of -32 percent, against -43
+percent for the large caps, but with nearly twice the volatility, at 18
+percent against 9 percent. Their protection in falling markets is
+therefore real on average but unreliable from month to month. In the
+best fifth of months the large caps gained most, at 110 percent, which
+is the mirror image of the small caps’ low beta.
+
+Rand volatility is the state that separates the indexes most clearly.
+When the rand is calm, small caps are the best performer, at 32 percent,
+with the lowest volatility of the three in that regime. When the rand is
+volatile they become the worst, at -9 percent, with volatility more than
+doubling. That pattern fits their domestic sector mix, since a volatile
+rand signals local stress and raises imported inflation and interest
+rate risk, while the large caps’ offshore earnings and resource exports
+act as a partial hedge. The VIX, by contrast, barely changes returns. It
+raises the volatility of every index, and most of all for small caps,
+whose volatility rises from 9 percent to 24 percent, while the mid caps
+alone see their return fall sharply, to 4 percent.
+
+## Conclusion to Question 2
+
+The three size indexes offer very different exposures within the same
+market. The large-cap index is a concentrated, resource-heavy portfolio
+that has become close to a copy of the Capped SWIX, with an active share
+of 13 percent. Its risk comes from common global drivers that diversify
+poorly, but it has delivered the best full-sample trade-off and the
+shallowest drawdowns. The small-cap index is the only one that is
+genuinely different from the benchmark. It is a domestic, property-heavy
+portfolio of volatile but largely unrelated stocks, which makes the
+index calm in ordinary times and leaves it exposed in crises, in deep
+sell-offs and in periods of rand stress, when its diversification breaks
+down. Its low measured volatility is also partly an artefact of thin
+trading. The mid-cap index has drifted towards the large caps in its
+holdings and concentration, and has offered the weakest return and the
+least favourable asymmetry between up and down markets.
+
+For an investor, the indexes are therefore not interchangeable ways of
+owning local equity. The large caps are effectively the benchmark. The
+small caps add diversification and have rewarded patience since 2022,
+but they should be sized for their crisis behaviour and their dependence
+on domestic conditions, and the calm suggested by their daily volatility
+should not be taken at face value.
 
 # Question 3, Portfolio Return Comparison
 
