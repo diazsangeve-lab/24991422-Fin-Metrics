@@ -103,11 +103,11 @@ abstract: |
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, fig.width = 9, fig.height = 5.5, out.width = "100%", fig.align = "center", fig.pos = "H") # hide code and messages in the pdf, centre figures at the page width and hold each figure exactly where it is called, inside its own section
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, results = "hide", fig.width = 9, fig.height = 5.5, out.width = "100%", fig.align = "center", fig.pos = "H") # hide code and messages in the pdf, centre figures at the page width and hold each figure exactly where it is called, inside its own section
 if(!require("pacman")) install.packages("pacman") # make sure the package loader is available
 pacman::p_load(tidyverse, lubridate, xts, tbl2xts, PerformanceAnalytics, RcppRoll, fmxdat, rmsfuns, glue) # load the packages used throughout this question
 options(dplyr.summarise.inform = F) # stop summarise from printing grouping messages
-list.files("../../code/Question1/", full.names = T, recursive = T) %>% .[grepl(".R", .)] %>% as.list() %>% walk(~source(.)) # source every function written for this question from the root code folder
+list.files("../../code/", full.names = T, recursive = T) %>% .[grepl("[.]R$", .)] %>% as.list() %>% walk(~source(.)) # source every function in the root code folder, since the questions share helpers
 ```
 
 ```{r data, include=FALSE}
@@ -126,25 +126,6 @@ STeFI <- read_rds("../../data/STeFI_Index.rds") # the local cash index
 Active_Managers <- read_rds("../../data/Active_Managers.rds") # monthly returns of the active manager universe
 ```
 
-```{r part_a_calcs, include=FALSE}
-Local_Rets <- Idx_Daily %>% filter(Name %in% c("Capped SWIX", "Top 40", "MidCaps", "SmallCaps")) %>% mutate(dlogret = log(1 + Returns)) %>% select(date, Name, Returns, dlogret) # the four vanilla local indexes with log returns
-Global_Rets <- read_rds("../../data/MSCI_Indexes.rds") %>% filter(Name %in% c("MSCI_ACWI", "MSCI_EM")) %>% TRI_Returns_Calc(Start_Date = lubridate::ymd(20150101)) # global and emerging market returns over the same sample
-All_Rets <- bind_rows(Local_Rets, Global_Rets) # local and global returns together
-Index_Order <- c("Capped SWIX", "Top 40", "MidCaps", "SmallCaps", "MSCI_EM", "MSCI_ACWI") # the order of indexes in the figures
-Periods <- tibble(Period = c("2015-2019", "2020 (Covid)", "2021-2024", "2025", "2026 YTD"), Start = lubridate::ymd(c(20150101, 20200101, 20210101, 20250101, 20260101)), End = lubridate::ymd(c(20191231, 20201231, 20241231, 20251231, 20261231))) # the sub-periods compared
-Vol_Periods <- Vol_Period_Table(All_Rets, Periods) # annualised volatility by period
-Vol_Facts <- Vol_Periods %>% mutate(Key = paste(Name, Period)) # keyed for the numbers in the text
-Monthly_Vol <- Monthly_Vol_Calc(All_Rets) %>% mutate(Name = factor(Name, levels = Index_Order)) # monthly realised volatility
-Events <- tibble(date = lubridate::ymd(c(20151209, 20200315, 20220224, 20250402, 20260301)), Label = c("Nenegate", "Covid crash", "Ukraine invasion", "US tariffs", "2026 episode")) # events marked on the heatmap
-Garch_Sigma <- c("Capped SWIX", "MSCI_ACWI", "MSCI_EM") %>% map_df(~Best_Garch_Sigma(All_Rets, Series = .x)) # conditional volatility from the best fitting GARCH model per index
-Garch_Facts <- Garch_Sigma %>% group_by(Name) %>% summarise(Persistence = dplyr::first(Persistence), Avg = mean(Sigma), Avg_2026 = mean(Sigma[date >= lubridate::ymd(20260101)])) # averages used in the text
-State_Names <- c(VIX = "US implied volatility (VIX)", VXEEM = "EM implied volatility (VXEEM)", SAVIUSD = "Rand volatility (SAVIUSD)", EPUCGLCP = "Global policy uncertainty", Oil_Brent_Vol = "Brent oil volatility") # readable names for the state variables
-Gauges <- bind_rows(Implied_Vol, Uncertainty_Indexes, Local_Cncy_Vol_Index %>% select(-Description)) # gauges quoted as levels
-Oil_Rets <- Commods %>% TRI_Returns_Calc(Start_Date = lubridate::ymd(20150101)) # daily commodity returns
-State_df <- State_Monthly_Calc(Level_df = Gauges, Level_Sel = c("VIX", "VXEEM", "SAVIUSD", "EPUCGLCP"), Vol_df = Oil_Rets, Vol_Sel = "Oil_Brent") %>% mutate(State = recode(State, !!!State_Names)) # monthly state variables
-Vol_Strat <- Vol_Stratify(Local_Rets, States = State_df, Hi_Q = 0.8, Lo_Q = 0.2) # local volatility in calm and stressed months
-```
-
 # Introduction \label{Intro}
 
 A recent seminar argued that oil price volatility and global policy uncertainty are feeding into local equity markets, and that local funds should hold more low volatility stocks as a ballast. This paper tests that argument in three steps. Section \ref{PartA} establishes whether volatility on the local exchange has increased and whether the increase mirrors the global experience. Section \ref{PartB} evaluates whether the firm's SafeCore fund, which is built without reference to volatility, has managed volatility well, where its risk comes from and what factor exposures it holds. Section \ref{PartC} measures the alpha opportunity in the local market since 2020 and relates it to global macro variables. Section \ref{Conclusion} draws the implications together.
@@ -155,138 +136,543 @@ The analysis uses daily returns for the Capped SWIX, the Top 40, mid cap and sma
 
 # Local Volatility in a Global Context \label{PartA}
 
-## Volatility Before and During 2026
+## Scope and Method
 
-Figure \ref{fig:shift} compares annualised volatility in 2026 with its 2021 to 2024 baseline. The Capped SWIX rose from 15.7 to 20.7 percent, above its full sample level of `r Fact_Pull(Vol_Facts, "Capped SWIX Full Sample", "SD", Key_Col = "Key", Pct = 0.1)`, and emerging markets rose from 15.5 to 25.2 percent. The global index moved the other way, falling to 12.0 percent against a full sample norm of `r Fact_Pull(Vol_Facts, "MSCI_ACWI Full Sample", "SD", Key_Col = "Key", Pct = 0.1)`, as did small caps. The rise in local volatility therefore resembles the emerging market experience far more closely than the global one, and it was concentrated in the larger, globally exposed shares.
+This part establishes whether volatility on the local exchange has increased and whether that increase mirrors the global experience. The analysis moves from simple measures to model-based ones. It first compares annualised volatility across sub-periods and traces its timing with rolling windows and a monthly heatmap. It then separates the volatility signal from noise using GARCH models, examines how strongly volatility responds to bad news, and uses a DCC model to test whether the local market has become more tightly linked to global markets. Finally, it stratifies the sample by global conditions to identify which external forces local volatility responds to, and which local segment holds up best when they strike.
 
-```{r shift, fig.height = 5, fig.cap = "Shift in annualised volatility from the 2021 to 2024 baseline to 2026"}
-Plot_Vol_Shift(Vol_Periods, Base_Per = "2021-2024", Target_Per = "2026 YTD", Index_Sel = Index_Order, Title = "Shift in Annualised Volatility from the 2021-2024 Baseline to 2026", Subtitle = "Local large caps and emerging markets surged, while global equities and small caps cooled", Caption = "Note:\nAnnualised standard deviation of daily returns. Diamonds mark the 2015-2026 full sample norm. Calculation own.") # the volatility shift for each index
+Three choices shape the analysis. The Capped SWIX (J433) serves as the local yardstick, since it is the fund's benchmark in Part B and its capping prevents a handful of large shares from dominating the result. The MSCI All Country World index represents the global experience, while the MSCI Emerging Markets index represents the peer group to which South Africa belongs. The local index is quoted in rand and the MSCI indexes in dollars, and each is kept in its own currency because the question concerns the volatility that each investor base experiences. Part of any difference between them may therefore reflect movements in the rand.
+
+```{r q1a_returns}
+Local_Rets <- Idx_Daily %>% filter(Name %in% c("Capped SWIX", "Top 40", "MidCaps", "SmallCaps")) %>% mutate(dlogret = log(1 + Returns)) %>% select(date, Name, Returns, dlogret) # keep the four vanilla local indexes and add log returns for the volatility models
+Global_Rets <- read_rds("../../data/MSCI_Indexes.rds") %>% filter(Name %in% c("MSCI_ACWI", "MSCI_EM", "MSCI_USA")) %>% TRI_Returns_Calc(Start_Date = lubridate::ymd(20150101)) # turn the global index levels into daily returns over the same sample as the local data
+All_Rets <- bind_rows(Local_Rets, Global_Rets) # stack local and global returns into one tidy data frame
+Index_Order <- c("Capped SWIX", "Top 40", "MidCaps", "SmallCaps", "MSCI_EM", "MSCI_ACWI") # the order in which indexes appear in the figures, local first and then emerging and global
 ```
 
-## Timing and Reach of Each Episode
+## Volatility by Period
 
-The monthly heatmap in Figure \ref{fig:heatmap} shows the reach of each episode. The US tariff announcements of April 2025 darken every row at once, which marks them as a global shock. The 2026 episode is confined to the large local indexes and emerging markets, while the global and small cap rows stay pale, and the local episode had largely subsided by July 2026, when emerging market volatility peaked.
+The most direct test compares annualised volatility across periods. The sample is divided into the calm years before Covid, the Covid year itself, the recovery from 2021 to 2024, and 2025 and 2026 separately, since these two years are the focus of the seminar. The shift chart below tracks how each index moved from its 2021 to 2024 baseline into 2026, with the grey diamond marking its full sample norm and the change in percentage points displayed in the right-hand column.
 
-```{r heatmap, fig.height = 4.8, fig.cap = "Monthly realised volatility, 2015 to 2026"}
-Plot_Vol_Heatmap(Monthly_Vol, Events = Events, Cap = 0.4, Title = "Monthly Realised Volatility, 2015 to 2026", Subtitle = "April 2025 was a global shock, while the 2026 episode was confined to large local shares and emerging markets", Caption = "Note:\nAnnualised standard deviation of daily returns within each month. Colours capped at 40 percent. Calculation own.") # the monthly volatility heatmap with events marked
+```{r q1a_period_shift, fig.width = 10, fig.height = 5.5, fig.cap = "Shift in Annualised Volatility from the 2021-2024 Baseline to 2026"}
+Periods <- tibble(Period = c("2015-2019", "2020 (Covid)", "2021-2024", "2025", "2026 YTD"), # the names of the sub-periods
+                  Start = lubridate::ymd(c(20150101, 20200101, 20210101, 20250101, 20260101)), # the first day of each sub-period
+                  End = lubridate::ymd(c(20191231, 20201231, 20241231, 20251231, 20261231))) # the last day of each sub-period
+Vol_Periods <- Vol_Period_Table(All_Rets, Periods) # annualised volatility of every index in every sub-period
+Vol_Facts <- Vol_Periods %>% mutate(Key = paste(Name, Period)) # every index and period in one keyed table, used for the numbers in the text
+Plot_Vol_Shift(Vol_Periods, Base_Per = "2021-2024", Target_Per = "2026 YTD", Index_Sel = Index_Order, # the shift from the 2021 to 2024 baseline into 2026 for each index
+               Title = "Shift in Annualised Volatility from the 2021-2024 Baseline to 2026", # the plot title
+               Subtitle = "Local large caps and emerging markets surged, while global equities and small caps cooled", # the main message
+               Caption = "Note:\nAnnualised standard deviation of daily returns. Arrows run from the 2021-2024 baseline to 2026 YTD.\nDiamonds mark the 2015-2026 full sample norm. Calculation own.") # the note under the plot
 ```
 
-## Conditional Volatility
+The figure shows that local volatility rose in 2026 while global volatility did not. The Capped SWIX recorded annualised volatility of 20.7 percent in 2026, above the 15.7 percent of 2021 to 2024 and its full sample level of `r Fact_Pull(Vol_Facts, "Capped SWIX Full Sample", "SD", Key_Col = "Key", Pct = 0.1)`. The MSCI ACWI moved in the opposite direction, at 12.0 percent in 2026 against a full sample level of `r Fact_Pull(Vol_Facts, "MSCI_ACWI Full Sample", "SD", Key_Col = "Key", Pct = 0.1)`, while the MSCI Emerging Markets index rose to 25.2 percent. The rise in local volatility therefore resembles the emerging market experience far more closely than the global one. Small caps are a notable exception, with volatility of 12.0 percent in 2026 against `r Fact_Pull(Vol_Facts, "SmallCaps Full Sample", "SD", Key_Col = "Key", Pct = 0.1)` over the full sample, which suggests that the turbulence was concentrated in the larger and more globally exposed shares of the Top 40, where volatility reached 22.4 percent.
 
-A GARCH model separates the volatility signal from noise. Four specifications were fitted to each index, and the lowest AIC selected an asymmetric model in every case, which confirms that bad news raises volatility more than good news. Figure \ref{fig:garch} shows that in 2026 the local and emerging market distributions of conditional volatility shifted right and widened, while the global distribution barely moved. Local conditional volatility averaged `r Fact_Pull(Garch_Facts, "Capped SWIX", "Avg_2026", Pct = 0.1)` in 2026 against `r Fact_Pull(Garch_Facts, "Capped SWIX", "Avg", Pct = 0.1)` over the full sample, while the global figure of `r Fact_Pull(Garch_Facts, "MSCI_ACWI", "Avg_2026", Pct = 0.1)` sat slightly below its norm.
+## Rolling Realised Volatility
 
-```{r garch, fig.height = 6.5, fig.cap = "Distribution of GARCH conditional volatility by year"}
-Plot_Garch_Sigma(Garch_Sigma, X_Max = 0.5, Title = "Distribution of GARCH Conditional Volatility by Year", Subtitle = "In 2026 the local and emerging market distributions shift right and widen, while the global distribution barely moves", Caption = "Note:\nBest fitting GARCH(1,1) model per index by AIC. Vertical lines mark each year's median. Calculation own.") # the ridgeline of conditional volatility
+```{r q1a_rolling, fig.width = 10, fig.height = 6.5, fig.cap = "Rolling 3 Month Realised Volatility"}
+Roll_Vol <- Roll_SD_Calc(All_Rets, NSel = 63) # rolling three month annualised volatility for every index
+Roll_Facts <- Roll_Vol %>% group_by(Name) %>% summarise(Last = dplyr::last(RollSD), Pctile = mean(RollSD <= dplyr::last(RollSD)), Peak_2026 = max(RollSD[date >= lubridate::ymd(20260101)])) # the latest reading, where it ranks in the index's history and the 2026 peak, used in the text
+Plot_Roll_Vol(Roll_Vol %>% filter(Name %in% Index_Order) %>% mutate(Name = factor(Name, levels = Index_Order)), # plot the local, emerging and global indexes as small multiples
+              Title = "Rolling 3 Month Realised Volatility", # the plot title
+              Subtitle = "Large local shares and emerging markets peaked in 2026, while small caps and global equities stayed close to normal", # the main message
+              Caption = "Note:\nGrey lines show every other index for context. Dashed lines show each index's own average. Local indexes in ZAR, MSCI indexes in USD. Calculation own.") # the note under the plot
 ```
 
-## Global Drivers of Local Volatility
+Figure \ref{fig:q1a_rolling} traces three month rolling volatility. Local volatility peaked in April 2026 and had fallen back to `r Fact_Pull(Roll_Facts, "Capped SWIX", "Last", Pct = 1)` by September, while small caps and the global index barely moved. The 2026 rise was therefore a pronounced but temporary episode.
 
-The seminar's claim about its causes is tested by stratifying months into the top and bottom quintiles of each global state variable. Figure \ref{fig:strat} shows that market-based stress matters. When oil volatility sits in its top quintile, the Capped SWIX is 1.41 times as volatile as normal, and the ratios for emerging market and US implied volatility are 1.50 and 1.46. Global policy uncertainty barely matters on its own, with a gap of only 0.06 between its calm and stressed months, which suggests that uncertainty reaches local share prices only through market channels such as oil prices and emerging market risk appetite. A DCC model on weekly returns adds that the correlation of the Capped SWIX with global equities was essentially unchanged in 2026, while its correlation with emerging markets fell, so the rise in local volatility came from larger shocks and not from a tighter link with offshore markets.
+## A Heatmap of Monthly Volatility
 
-```{r strat, fig.height = 4.8, fig.cap = "Capped SWIX volatility in calm and stressed global regimes"}
-Plot_Vol_Stratify(Vol_Strat, Index_Sel = "Capped SWIX", Title = "Capped SWIX Volatility in Calm and Stressed Global Regimes", Subtitle = "Market-based stress raises local volatility, while news-based policy uncertainty alone has little effect", Caption = "Note:\nCalm and stressed months are the bottom and top quintile of months for each state variable since 2015. Calculation own.") # the dumbbell of calm and stressed volatility
+```{r q1a_heatmap, fig.width = 10, fig.height = 5, fig.cap = "Monthly Realised Volatility, 2015 to 2026"}
+Monthly_Vol <- Monthly_Vol_Calc(All_Rets %>% filter(Name %in% Index_Order)) %>% mutate(Name = factor(Name, levels = Index_Order)) # realised volatility of each index in every calendar month
+Events <- tibble(date = lubridate::ymd(c(20151209, 20200315, 20220224, 20250402, 20260301)), # the dates of the events to mark
+                 Label = c("Nenegate", "Covid crash", "Ukraine invasion", "US tariffs", "2026 episode")) # the names of the events
+Plot_Vol_Heatmap(Monthly_Vol, Events = Events, Cap = 0.4, # plot the monthly heatmap with the events marked
+                 Title = "Monthly Realised Volatility, 2015 to 2026", # the plot title
+                 Subtitle = "April 2025 was a global shock, while the 2026 episode was confined to large local shares and emerging markets", # the main message
+                 Caption = "Note:\nAnnualised standard deviation of daily returns within each month. Colours capped at 40 percent. Calculation own.") # the note under the plot
+Cal_Facts <- Monthly_Vol %>% group_by(Name) %>% mutate(Rank = rank(-Vol)) %>% ungroup() %>% mutate(Key = paste(Name, format(Month_Date, "%b %Y"))) # rank every month within its own index, where one is the most volatile month, used in the text
 ```
 
-```{r part_b_calcs, include=FALSE}
-SafeCore_Rets <- Holdings_Returns_Calc(SafeCore, Stock_Returns, Start_Date = lubridate::ymd(20150101), Ret_Cap = 0.25, Port_Name = "SafeCore") # SafeCore's daily returns rebuilt from its holdings
-BM_Rets <- Holdings_Returns_Calc(Monthly_Constituents %>% filter(Fund == "CappedSWIX"), Stock_Returns, Start_Date = lubridate::ymd(20150101), Ret_Cap = 0.25, Port_Name = "Capped SWIX") # the benchmark rebuilt the same way
-Port_Daily <- bind_rows(SafeCore_Rets, BM_Rets) # fund and benchmark together
-Stats_All <- bind_rows(Fund_Stats_Table(Port_Daily, BM_Name = "Capped SWIX", Rf_df = STeFI) %>% mutate(Period = "2015-2026"), Fund_Stats_Table(Port_Daily %>% filter(date >= lubridate::ymd(20200101)), BM_Name = "Capped SWIX", Rf_df = STeFI) %>% mutate(Period = "2020-2026")) # the statistics over both periods
-Stats_Facts <- Stats_All %>% filter(Name == "SafeCore") # the fund's relative measures
-Risk_Dates <- SafeCore %>% distinct(date) %>% filter(date >= lubridate::ymd(20151231), lubridate::month(date) %in% c(3, 6, 9, 12) | date == max(date)) %>% pull(date) # quarter ends plus the latest date
-Risk_Contrib <- Risk_Dates %>% map_df(~Risk_Contribution_Calc(SafeCore, Stock_Returns, Date_Sel = .x, Lookback_Months = 12)) # risk contributions on every date
-Latest_Risk <- Risk_Contrib %>% filter(date == max(date)) # the latest decomposition
-Score_Dates <- sort(unique(Factor_Scores$date)) # vendor score dates
-Own_Scores <- Own_Factor_Scores(Stock_Returns, Score_Dates, Mom_Months = 6, Skip_Months = 1, Vol_Months = 6) # own 6-1 momentum and 6 month volatility
-Own_Mom12 <- Own_Factor_Scores(Stock_Returns, Score_Dates, Mom_Months = 12, Skip_Months = 1, Vol_Months = 6) %>% select(date, Tickers, Mom12_Raw = Mom_Raw) # the 12-1 diagnostic
-Stock_Betas <- Stock_Beta_Calc(Stock_Returns, Idx_Daily %>% filter(Tickers == "J433") %>% select(date, Mkt = Returns), Score_Dates, Months = 12) # market and downside betas
-Scores_All <- Factor_Scores %>% spread(Factor, Factor_Value) %>% left_join(Own_Scores, by = c("date", "Tickers")) %>% left_join(Own_Mom12, by = c("date", "Tickers")) %>% left_join(Stock_Betas, by = c("date", "Tickers")) %>% mutate(LowVol_Raw = -Vol_Raw) %>% Zscore_Calc(Cols = c("Mom_Raw", "Mom12_Raw", "LowVol_Raw"), Cap = 3) %>% rename(Momentum_Own = Mom_Raw, Momentum12_Own = Mom12_Raw, LowVol_Own = LowVol_Raw) # all scores, standardised within the vendor's universe
-Score_Pairs <- tibble(X = c("Momentum_Own", "Momentum12_Own", "LowVol_Own"), Y = c("Momentum", "Momentum", "Volatility Sensitivity"), Label = c("Own 6-1 momentum vs vendor", "Own 12-1 momentum vs vendor", "Own low volatility vs vendor volatility sensitivity")) # the three comparisons
-Score_Cor <- Score_Rank_Cor(Scores_All, Score_Pairs) # monthly rank correlations
-Own_Names <- c(Beta = "Market beta", Downside_Beta = "Downside beta", LowVol_Own = "Own low volatility", Momentum_Own = "Own 6-1 momentum", Momentum12_Own = "Own 12-1 momentum") # readable names
-Diag_Pairs <- tidyr::expand_grid(Y = c("Earnings Quality", "Growth", "Momentum", "Value", "Volatility Sensitivity"), X = names(Own_Names)) %>% mutate(Label = paste(X, Y, sep = " | ")) # every combination
-Score_Diag <- Score_Rank_Cor(Scores_All, Diag_Pairs) %>% group_by(Label) %>% summarise(Rho = mean(Rho)) %>% tidyr::separate(Label, c("Own", "Vendor"), sep = " \\| ") %>% mutate(Own = factor(recode(Own, !!!Own_Names), levels = rev(Own_Names))) # average rank correlations
-Strategy_Holdings <- Local_Index_Constituents %>% mutate(YM = format(date, "%Y%m")) %>% group_by(Index, YM) %>% filter(date == max(date)) %>% ungroup() %>% select(date, Portfolio = Index, Tickers, Weight = weight) # month end strategy index holdings
-All_Holdings <- bind_rows(Strategy_Holdings, SafeCore %>% filter(date >= lubridate::ymd(20200101)) %>% select(date, Portfolio = Fund, Tickers, Weight)) # strategies and SafeCore together
-Scores_Long <- Scores_All %>% select(date, Tickers, `Earnings Quality`, Growth, Value, `Vendor Momentum` = Momentum, `Vendor Volatility Sensitivity` = `Volatility Sensitivity`, `Own Momentum (6-1)` = Momentum_Own, `Own Low Volatility` = LowVol_Own) %>% gather(Factor, Score, -date, -Tickers) # long format scores
-Port_Factor_Scores <- Portfolio_Factor_Scores(All_Holdings, Scores_Long) # composite scores per portfolio
-Comp_Avg <- Port_Factor_Scores %>% filter(date >= lubridate::ymd(20200801)) %>% group_by(Portfolio, Factor) %>% summarise(Score = mean(Score), .groups = "drop") %>% mutate(Key = paste(Portfolio, Factor, sep = " | ")) # average composite scores
+Figure \ref{fig:q1a_heatmap} shows the reach of each episode. The US tariff announcements of April 2025 darken every row, which marks them as a global shock. March 2026 was the `r Fact_Pull(Cal_Facts, "Capped SWIX Mar 2026", "Rank", Key_Col = "Key", Ordinal = TRUE)` most volatile month on the Capped SWIX since 2015, at `r Fact_Pull(Cal_Facts, "Capped SWIX Mar 2026", "Vol", Key_Col = "Key", Pct = 0.1)`, but the global and small cap rows stay pale through 2026.
+
+## Volatility Clustering in Daily Returns
+
+Before a GARCH model is fitted, the data should show the feature it is built to capture. Following the univariate volatility practical, the autocorrelation of daily returns is compared with the autocorrelation of squared returns for the local, global and emerging market indexes, with the Ljung-Box test over ten lags reported in each panel.
+
+```{r q1a_acf, fig.width = 10, fig.height = 7, fig.cap = "Volatility Clustering in Daily Returns"}
+Acf_df <- Acf_Calc(All_Rets, Series = c("Capped SWIX", "MSCI_ACWI", "MSCI_EM"), Lags = 25) # autocorrelation of returns and squared returns, with the Ljung-Box test
+Acf_Facts <- Acf_df %>% group_by(Name, Type) %>% summarise(LB = dplyr::first(LB_Stat), Out = sum(abs(ACF) > Bound), .groups = "drop") %>% mutate(Key = paste(Name, Type)) # the test statistic and the number of lags outside the band, used in the text
+Plot_Acf_Clustering(Acf_df, # returns next to squared returns for each index
+                    Title = "Volatility Clustering in Daily Returns", # the plot title
+                    Subtitle = "Returns carry little memory, while squared returns stay autocorrelated for weeks in every market", # the main message
+                    Caption = "Note:\nDaily log returns from 2015, demeaned. The shaded band marks plus and minus 1.96 over the square root of the sample size. Calculation own.") # the note under the plot
 ```
+
+Returns themselves carry little memory. Between `r min(Acf_Facts$Out[Acf_Facts$Type == "Returns"])` and `r max(Acf_Facts$Out[Acf_Facts$Type == "Returns"])` of the 25 lags fall outside the band, and every one of those autocorrelations is small. The Ljung-Box test still rejects the absence of autocorrelation for all three series, with a statistic of `r round(Acf_Facts$LB[Acf_Facts$Key == "Capped SWIX Returns"])` locally and `r round(Acf_Facts$LB[Acf_Facts$Key == "MSCI_ACWI Returns"])` globally. The global figure is the largest because the MSCI ACWI combines markets that close at different times, so news that reaches Asia after New York has closed enters the index a day late. Squared returns behave very differently. Their autocorrelation is positive at almost every lag, with `r min(Acf_Facts$Out[Acf_Facts$Type == "Squared returns"])` to `r max(Acf_Facts$Out[Acf_Facts$Type == "Squared returns"])` of the 25 lags outside the band, and the Ljung-Box statistic rises to `r round(Acf_Facts$LB[Acf_Facts$Key == "Capped SWIX Squared returns"])` for the Capped SWIX. Large moves tend to follow large moves in every market, which is the clustering a GARCH model is designed to capture, and the small autocorrelation in returns themselves supports the AR(1) mean equation used below.
+
+## Conditional Volatility from GARCH Models
+
+Realised volatility has a mechanical weakness, since a single large return remains in the window for three months and then drops out abruptly. A GARCH model avoids this by separating the volatility signal from the noise in returns. To avoid imposing a specification, the function fits four candidate models to each index, namely the standard GARCH, GJR, EGARCH and APARCH, each with an AR(1) mean equation and student t errors, and retains the model with the lowest AIC. The ridgeline plot then shows the full distribution of each index's daily conditional volatility within every year, with a line at each year's median, which reveals shifts in the whole distribution that a single average would hide.
+
+```{r q1a_garch, fig.height = 7, fig.cap = "Distribution of GARCH Conditional Volatility by Year"}
+Garch_Sigma <- c("Capped SWIX", "MSCI_ACWI", "MSCI_EM") %>% map_df(~Best_Garch_Sigma(All_Rets, Series = .x)) # fit the best GARCH model to each index and stack the conditional volatility series
+Garch_Facts <- Garch_Sigma %>% group_by(Name) %>% summarise(Persistence = dplyr::first(Persistence), Half_Life = log(0.5) / log(dplyr::first(Persistence)), Avg = mean(Sigma), Avg_2026 = mean(Sigma[date >= lubridate::ymd(20260101)])) # persistence, the half life of a shock in trading days and the average volatility, used in the text
+Plot_Garch_Sigma(Garch_Sigma, X_Max = 0.5, # plot the yearly distributions of conditional volatility
+                 Title = "Distribution of GARCH Conditional Volatility by Year", # the plot title
+                 Subtitle = "In 2026 the local and emerging market distributions shift right and widen, while the global distribution barely moves", # the main message
+                 Caption = "Note:\nBest fitting GARCH(1,1) model per index by AIC, with student t errors. Vertical lines mark each year's median. Axis truncated at 50 percent. Calculation own.") # the note under the plot
+```
+
+The data favour asymmetric models for all three indexes, as the legend shows, with an EGARCH selected for the Capped SWIX and the global index and a GJR model for emerging markets. Asymmetry means that negative shocks raise volatility by more than positive shocks of the same size, so volatility tends to arrive when returns are already falling. Persistence of `r Fact_Pull(Garch_Facts, "Capped SWIX", "Persistence")` for the Capped SWIX implies that half of a volatility shock is still present after roughly `r Fact_Pull(Garch_Facts, "Capped SWIX", "Half_Life", Digits = 0)` trading days. Through most of the sample the global distribution sits to the left of the other two, reflecting its lower base level of volatility. In 2026 the local and emerging market distributions shift to the right and spread out, while the global distribution stays close to its usual position. Local conditional volatility averaged `r Fact_Pull(Garch_Facts, "Capped SWIX", "Avg_2026", Pct = 0.1)` in 2026 against `r Fact_Pull(Garch_Facts, "Capped SWIX", "Avg", Pct = 0.1)` over the full sample, while global conditional volatility averaged `r Fact_Pull(Garch_Facts, "MSCI_ACWI", "Avg_2026", Pct = 0.1)`, slightly below its own norm of `r Fact_Pull(Garch_Facts, "MSCI_ACWI", "Avg", Pct = 0.1)`. With the noise removed, the GARCH estimates confirm the pattern found in realised volatility.
+
+## The Asymmetric Response to Bad News
+
+```{r q1a_nic, fig.cap = "News Impact Curves for Local, Global and Emerging Markets"}
+Best_Models <- Garch_Sigma %>% distinct(Name, Model) # the model chosen by AIC for each index in the previous step
+NIC_df <- Best_Models %>% pmap_df(~Garch_NIC_Calc(All_Rets, Series = ..1, Model = ..2, Shock_Range = 0.06)) # trace each index's news impact curve over shocks of minus to plus six percent
+NIC_Facts <- NIC_df %>% group_by(Name) %>% summarise(At_Zero = Vol[which.min(abs(Shock))], Asym = Vol[which.min(abs(Shock + 0.04))] / Vol[which.min(abs(Shock - 0.04))]) %>% mutate(Name = as.character(Name)) # the volatility after no surprise and the ratio of the response to a 4 percent fall relative to a 4 percent rise, used in the text
+Plot_NIC(NIC_df, Mark_Shock = 0.04, # plot the three news impact curves together
+         Title = "News Impact Curves for Local, Global and Emerging Markets", # the plot title
+         Subtitle = "Local volatility starts higher but reacts less sharply to bad news than global or emerging markets", # the main message
+         Caption = "Note:\nCurves from the best fitting GARCH(1,1) model per index, with lagged variance at its long run level. Points mark shocks of plus and minus 4 percent. Calculation own.") # the note under the plot
+```
+
+Figure \ref{fig:q1a_nic} traces the news impact curve of each model. All three rise more steeply after bad news, but the local curve is flatter, with an asymmetry ratio of `r Fact_Pull(NIC_Facts, "Capped SWIX (eGARCH)", "Asym")` against `r Fact_Pull(NIC_Facts, "MSCI_ACWI (eGARCH)", "Asym")` globally. The local market starts from a higher base but reacts less violently to falls, possibly because of the weight of rand hedge shares.
+
+## Forecasting Volatility Forward
+
+A GARCH model also says how long a volatility episode should last. Following the forecasting section of the univariate volatility practical, the selected model for each index is used to forecast conditional volatility six months beyond the end of the sample, and the forecast is drawn next to the recent fitted path and the long run level to which it converges.
+
+```{r q1a_forecast, fig.width = 10, fig.height = 7.5, fig.cap = "GARCH Volatility Forecasts Six Months Ahead"}
+Garch_Fc <- Best_Models %>% pmap_df(~Garch_Forecast_Calc(All_Rets, Series = ..1, Model = ..2, N_Ahead = 126, Show_From = lubridate::ymd(20250101))) # recent fitted volatility and a six month forecast for each index, using the model selected above
+Fc_Facts <- Garch_Fc %>% group_by(Name) %>% summarise(Last_Fit = dplyr::last(Sigma[Part == "Fitted"]), Fc_3m = Sigma[Part == "Forecast"][63], Long_Run = dplyr::first(Long_Run), Half_Life = dplyr::first(Half_Life), .groups = "drop") # the latest fitted value, the three month forecast, the long run level and the half life, used in the text
+Plot_Garch_Forecast(Garch_Fc, Cols = c(`Capped SWIX` = "#1F3A6B", MSCI_ACWI = "#B5451B", MSCI_EM = "#1E7B3A"), # the fitted path and forecast for each index
+                    Title = "GARCH Volatility Forecasts Six Months Ahead", # the plot title
+                    Subtitle = "Local volatility is expected to drift back to its long run level within a few months", # the main message
+                    Caption = "Note:\nThin lines are fitted conditional volatility since 2025 and thick lines the forecast, in the grey band. Dashed lines mark each model's long run level. Calculation own.") # the note under the plot
+```
+
+The forecasts treat the 2026 episode as temporary. At the end of September 2026 the conditional volatility of the Capped SWIX stood at `r Fact_Pull(Fc_Facts, "Capped SWIX", "Last_Fit", Pct = 0.1)`, above its long run level of `r Fact_Pull(Fc_Facts, "Capped SWIX", "Long_Run", Pct = 0.1)`, and the model projects it to fall to `r Fact_Pull(Fc_Facts, "Capped SWIX", "Fc_3m", Pct = 0.1)` within three months, since half of any shock fades within about `r Fact_Pull(Fc_Facts, "Capped SWIX", "Half_Life", Digits = 0)` trading days. Global volatility, at `r Fact_Pull(Fc_Facts, "MSCI_ACWI", "Last_Fit", Pct = 0.1)`, sits close to its long run level of `r Fact_Pull(Fc_Facts, "MSCI_ACWI", "Long_Run", Pct = 0.1)`. Emerging market volatility, whose shocks halve in only `r Fact_Pull(Fc_Facts, "MSCI_EM", "Half_Life", Digits = 0)` days, had already returned to its long run level of `r Fact_Pull(Fc_Facts, "MSCI_EM", "Long_Run", Pct = 0.1)` by the end of the sample. One qualification applies. A GARCH forecast always converges to the average of the estimation sample, so it cannot detect a lasting shift in the level of volatility, and the evidence against such a shift comes from the rolling and heatmap results above.
+
+## Co-movement with Global Markets
+
+Volatility can rise relative to global markets in two different ways. The local market may become more tightly linked to them, so that global shocks pass through more fully, or it may simply be exposed to larger shocks in the markets it already moves with. The two carry different implications for a risk ballast, so the time-varying correlation between the Capped SWIX and the two MSCI indexes is estimated with the DCC model from the multivariate volatility practical. Weekly log returns are used because the Johannesburg and New York markets close at different times, which biases daily correlations downwards, and because log returns can be summed across the days of a week. The lollipop chart shows each month's average correlation measured from the pair's long run average, so that months of tighter co-movement point up in red and months of looser co-movement point down in blue.
+
+```{r q1a_dcc, fig.height = 6, fig.cap = "Dynamic Conditional Correlations with the Capped SWIX"}
+Weekly_Rets <- Weekly_Returns_Calc(All_Rets %>% filter(Name %in% c("Capped SWIX", "MSCI_ACWI", "MSCI_EM"))) # weekly log returns, which sidestep the different closing times of Johannesburg and New York
+DCC_df <- DCC_Cor_Calc(Weekly_Rets, Base = "Capped SWIX") # time-varying correlation of the local index with the global and emerging market indexes
+DCC_Facts <- DCC_df %>% mutate(Pair = as.character(Pair)) %>% group_by(Pair) %>% summarise(Avg_2124 = mean(Rho[date >= lubridate::ymd(20210101) & date < lubridate::ymd(20250101)]), Avg_2026 = mean(Rho[date >= lubridate::ymd(20260101)]), Low_2016 = min(Rho[date >= lubridate::ymd(20160101)]), Low_Date = format(date[date >= lubridate::ymd(20160101)][which.min(Rho[date >= lubridate::ymd(20160101)])], "%B %Y")) # period averages and the lowest weekly reading since 2016, used in the text
+Plot_DCC(DCC_df, # plot both correlation series as lollipops from their averages
+         Title = "Dynamic Conditional Correlations with the Capped SWIX", # the plot title
+         Subtitle = "The link with offshore markets did not tighten in 2026, and the link with emerging markets weakened", # the main message
+         Caption = glue::glue("Note:\nMonthly averages of weekly DCC(1,1) correlations with GJR-GARCH univariate models, measured from each pair's average. DCC a = {round(dplyr::first(DCC_df$dcc_a), 3)} and b = {round(dplyr::first(DCC_df$dcc_b), 3)}. Calculation own.")) # the note under the plot, including the fitted parameters
+```
+
+The correlations are remarkably stable, as the small size of most lollipops shows. The local index has averaged a correlation of 0.68 with the global index and 0.69 with emerging markets, and the fitted DCC parameters in the caption imply that correlations adjust only slowly to new shocks. The one clear break is the Covid crash, when the monthly correlation with the global index rose to 0.78. In 2026 the correlation with the global index averaged `r Fact_Pull(DCC_Facts, "Capped SWIX vs MSCI_ACWI", "Avg_2026", Key_Col = "Pair")`, essentially unchanged from its 2021 to 2024 average of `r Fact_Pull(DCC_Facts, "Capped SWIX vs MSCI_ACWI", "Avg_2124", Key_Col = "Pair")`, while the correlation with emerging markets fell from `r Fact_Pull(DCC_Facts, "Capped SWIX vs MSCI_EM", "Avg_2124", Key_Col = "Pair")` to `r Fact_Pull(DCC_Facts, "Capped SWIX vs MSCI_EM", "Avg_2026", Key_Col = "Pair")` and reached `r Fact_Pull(DCC_Facts, "Capped SWIX vs MSCI_EM", "Low_2016", Key_Col = "Pair")` in `r Fact_Pull(DCC_Facts, "Capped SWIX vs MSCI_EM", "Low_Date", Key_Col = "Pair")`, its lowest weekly reading since 2016. The rise in local volatility therefore did not come from a tighter link with offshore markets. It came instead from larger shocks to the emerging market and commodity complex to which the local market is exposed, and the run of blue lollipops in the second half of 2026 matches the heatmap, in which emerging market volatility kept rising after local volatility had settled.
+
+## Volatility Across Global Regimes
+
+The seminar attributed rising local volatility to oil price volatility and global policy uncertainty. This claim is tested by stratifying the sample, following the approach used for rand volatility in the Practical 2 bonus. Each month is ranked by a state variable, and the top and bottom quintiles of months are labelled stressed and calm. The volatility of the Capped SWIX within those months is then compared with its full sample volatility. Five state variables are considered, namely US and emerging market implied volatility, rand volatility, the global economic policy uncertainty index, and the realised volatility of Brent oil. The dumbbell chart places each state's calm and stressed readings on one line, with the gap between them in the column on the right.
+
+```{r q1a_stratify, fig.cap = "Capped SWIX Volatility in Calm and Stressed Global Regimes"}
+State_Names <- c(VIX = "US implied volatility (VIX)", VXEEM = "EM implied volatility (VXEEM)", SAVIUSD = "Rand volatility (SAVIUSD)", EPUCGLCP = "Global policy uncertainty", Oil_Brent_Vol = "Brent oil volatility") # readable names for the state variables
+Gauges <- bind_rows(Implied_Vol, Uncertainty_Indexes, Local_Cncy_Vol_Index %>% select(-Description)) # stack the volatility and uncertainty gauges that are quoted as levels
+Oil_Rets <- Commods %>% TRI_Returns_Calc(Start_Date = lubridate::ymd(20150101)) # daily commodity returns, from which monthly oil volatility is measured
+State_df <- State_Monthly_Calc(Level_df = Gauges, Level_Sel = c("VIX", "VXEEM", "SAVIUSD", "EPUCGLCP"), Vol_df = Oil_Rets, Vol_Sel = "Oil_Brent") %>% mutate(State = recode(State, !!!State_Names)) # one monthly value per state variable, with readable names
+Vol_Strat <- Vol_Stratify(Local_Rets, States = State_df, Hi_Q = 0.8, Lo_Q = 0.2) # local index volatility in the high and low quintile months of each state
+EPU_Annual <- Uncertainty_Indexes %>% filter(Name == "EPUCGLCP", date >= lubridate::ymd(20150101)) %>% group_by(Year = as.character(lubridate::year(date))) %>% summarise(Avg = mean(TRI)) # the yearly average of global policy uncertainty, used in the text
+Plot_Vol_Stratify(Vol_Strat, Index_Sel = "Capped SWIX", # plot the result for the local benchmark
+                  Title = "Capped SWIX Volatility in Calm and Stressed Global Regimes", # the plot title
+                  Subtitle = "Market-based stress raises local volatility, while news-based policy uncertainty alone has little effect", # the main message
+                  Caption = "Note:\nCalm and stressed months are the bottom and top quintile of months for each state variable since 2015. Calculation own.") # the note under the plot
+```
+
+The chart separates market-based stress from news-based uncertainty. In months when oil volatility sits in its top quintile, the Capped SWIX is 1.41 times as volatile as normal, and the equivalent ratios for emerging market and US implied volatility are 1.50 and 1.46. Rand volatility has a similar but smaller effect, at 1.34. Global policy uncertainty is the exception, with a gap of only 0.06 between its calm and stressed months, so the most uncertain months are barely more volatile than the calmest. Policy uncertainty reached its highest annual average since 2015 in `r EPU_Annual$Year[which.max(EPU_Annual$Avg)]`, at `r round(max(EPU_Annual$Avg))` against `r Fact_Pull(EPU_Annual, "2020", "Avg", Key_Col = "Year", Digits = 0)` during the Covid year, yet it appears to affect local share prices only once it is transmitted through a market channel, such as oil prices or emerging market risk appetite.
+
+## Volatility Across Local Size Segments
+
+```{r q1a_size_bubbles, fig.width = 10, fig.height = 6, fig.cap = "Stratified Volatility Across Local Size Segments"}
+Plot_Strat_Heatmap(Vol_Strat %>% mutate(Name = factor(Name, levels = c("Top 40", "Capped SWIX", "MidCaps", "SmallCaps"))), # order the indexes from largest to smallest companies
+                   Title = "Stratified Volatility Across Local Size Segments", # the plot title
+                   Subtitle = "Small caps remain the calmest segment in every regime, although their volatility rises most in proportion", # the main message
+                   Caption = "Note:\nBubble size and label show annualised volatility in the top and bottom quintile months of each state variable. Colour shows the ratio to full sample volatility. Calculation own.") # the note under the plot
+```
+
+Figure \ref{fig:q1a_size_bubbles} repeats the stratification across the size indexes. Small caps are the calmest segment in every regime, although their volatility rises most in proportion, up to `r sprintf("%.2f", max(Vol_Strat$Ratio[Vol_Strat$Name == "SmallCaps"]))` times normal. Part of their calm may reflect stale prices in thinly traded shares.
+
+## Summary of Part A
+
+Local volatility has increased, subject to three qualifications. The increase took the form of an episode, peaking in March and April 2026 and subsiding by the third quarter, and not as a permanent rise in the level of volatility. It did not mirror the global experience, since developed market volatility stayed below its average throughout 2026, and instead followed emerging markets and the oil market. It also did not reflect a tighter link with offshore markets, as the correlation with global equities was little changed in 2026 and the correlation with emerging markets fell. The local market reacts less sharply to bad news than global markets do, which suggests a degree of built-in resilience.
+
+For a team considering a risk ballast in a local fund, the relevant threat is therefore a commodity and emerging market shock, more than a developed market sell-off, and a ballast calibrated only to developed market stress would have missed the 2026 episode. Within the local market, small caps offer the most natural ballast in absolute terms, subject to the liquidity caveat noted above. Part B examines whether SafeCore already holds such a ballast.
 
 # Volatility and Factor Exposures of SafeCore \label{PartB}
 
+## Scope and Method
+
+This part evaluates whether SafeCore, a fund built without explicit reference to volatility, has nonetheless managed volatility well. The analysis has three strands. The first compares the fund's return and risk profile with that of the Capped SWIX, its historical benchmark, across the full sample, through time, and in the calm and stressed regimes identified in Part A. The second decomposes the fund's volatility into the contribution of each sector and stock, using the marginal contribution approach from Practical 2. The third builds momentum and low volatility scores from price behaviour, tests them against the vendor's scores, and then uses all of the scores to compare SafeCore's factor exposures with those of the local strategy indexes.
+
+## Reconstructing the Fund and its Benchmark
+
+```{r q1b_build}
+SafeCore_Rets <- Holdings_Returns_Calc(SafeCore, Stock_Returns, Start_Date = lubridate::ymd(20150101), Ret_Cap = 0.25, Port_Name = "SafeCore") # daily returns of SafeCore rebuilt from its monthly holdings
+BM_Rets <- Holdings_Returns_Calc(Monthly_Constituents %>% filter(Fund == "CappedSWIX"), Stock_Returns, Start_Date = lubridate::ymd(20150101), Ret_Cap = 0.25, Port_Name = "Capped SWIX") # daily returns of the Capped SWIX rebuilt in exactly the same way
+J433_Published <- Idx_Daily %>% filter(Tickers == "J433") %>% select(date, Returns) %>% mutate(Name = "Published") # the published index returns, used only to validate the rebuild
+Rebuild_Check <-
+    bind_rows(BM_Rets %>% mutate(Name = "Rebuilt"), J433_Published) %>% # stack the rebuilt and published benchmark returns
+    group_by(Name, Year = as.character(lubridate::year(date))) %>% # one number per series per calendar year
+    summarise(Return = prod(1 + Returns) - 1, .groups = "drop") %>% # chain the daily returns into a calendar year return
+    spread(Name, Return) %>% # one column for the rebuilt index and one for the published index
+    mutate(Gap = abs(Rebuilt - Published)) # the absolute difference between the two in each year, used in the text
+Port_Daily <- bind_rows(SafeCore_Rets, BM_Rets) # the fund and its like for like benchmark in one tidy data frame
+```
+
+The rebuilt benchmark tracks the published J433 index closely, with calendar year returns within one percentage point in `r sum(Rebuild_Check$Gap < 0.01)` of the `r nrow(Rebuild_Check)` years.
+
 ## Return and Risk Profile
 
-SafeCore's daily returns were rebuilt from its monthly holdings with the safe portfolio return function from the practicals, and the Capped SWIX was rebuilt from its own constituents in the same way, so that the two are compared like for like. Figure \ref{fig:capture} shows that SafeCore outperformed, returning 11.1 percent a year against 8.6 percent with an information ratio of `r Fact_Pull(Stats_Facts, "2015-2026", "Information Ratio", Key_Col = "Period")`, but it did not manage volatility. Its volatility was slightly higher than the benchmark's, its beta was `r Fact_Pull(Stats_Facts, "2015-2026", "Beta", Key_Col = "Period")`, and since 2020 its down capture has risen above one, so it has lost more than the benchmark in falling months. The fund ran more volatility than its benchmark on most days since 2016, and in the stressed regimes of Section \ref{PartA} its volatility simply matched the benchmark's.
+The figure below sets out the return, risk and market capture measures from Practicals 1 and 2, calculated on monthly returns, over the full sample and since 2020. Panel A tracks the fund's position in the up-market vs down-market capture space relative to the benchmark at (1.00, 1.00), where points below the diagonal line represent asymmetric alpha. Panel B contrasts annualised return, volatility, max drawdown and tail risk across both periods. The capture ratios use the arithmetic version of the PerformanceAnalytics calculation, because the default geometric version compounds every up or down month into a single return and overstates the ratio.
 
-```{r capture, fig.width = 10.5, fig.height = 6.5, fig.cap = "Return and risk profile of SafeCore against the Capped SWIX"}
-Plot_Fund_Capture(Stats_All, BM_Name = "Capped SWIX", Fund_Name = "SafeCore", Title = "Return and Risk Profile of SafeCore Against the Capped SWIX", Subtitle = "SafeCore outperforms via upside capture, but offers no volatility reduction or downside protection", Caption = "Note:\nMonthly returns. Capture ratios use the arithmetic calculation. Modified CVaR shown as a positive loss. Calculation own.") # the capture quadrant and risk profile
+```{r q1b_capture, fig.width = 12, fig.height = 6.2, fig.cap = "Return and Risk Profile of SafeCore Against the Capped SWIX"}
+Stats_Full <- Fund_Stats_Table(Port_Daily, BM_Name = "Capped SWIX", Rf_df = STeFI) %>% mutate(Period = "2015-2026") # statistics over the full sample
+Stats_2020 <- Fund_Stats_Table(Port_Daily %>% filter(date >= lubridate::ymd(20200101)), BM_Name = "Capped SWIX", Rf_df = STeFI) %>% mutate(Period = "2020-2026") # statistics since the start of 2020
+Stats_All <- bind_rows(Stats_Full, Stats_2020) # combine full and post-2020 statistics
+Stats_Facts <- Stats_All %>% filter(Name == "SafeCore") # the fund's relative measures, used for the numbers in the text that the figure does not show
+Plot_Fund_Capture(Stats_All, BM_Name = "Capped SWIX", Fund_Name = "SafeCore", # plot the capture quadrant and risk-return profile
+                  Title = "Return and Risk Profile of SafeCore Against the Capped SWIX", # the plot title
+                  Subtitle = "SafeCore outperforms via upside capture, but offers no volatility reduction or downside protection", # the main message
+                  Caption = "Note:\nMonthly returns. Capture ratios use the arithmetic calculation. Modified CVaR shown as a positive loss. Calculation own.") # the note under the plot
 ```
 
-## Sources of Portfolio Risk
+SafeCore has delivered a better return than its benchmark, but it has not done so by managing volatility. Over the full sample the fund returned 11.1 percent a year against 8.6 percent, with an information ratio of `r Fact_Pull(Stats_Facts, "2015-2026", "Information Ratio", Key_Col = "Period")`, yet its volatility of 14.5 percent was slightly higher than the benchmark's 14.0 percent. Its beta of `r Fact_Pull(Stats_Facts, "2015-2026", "Beta", Key_Col = "Period")` shows that it moves one for one with the market, and its down capture of 0.98 means that it suffered almost the full extent of the benchmark's losses in falling months. The fund's protective features are modest. Its maximum drawdown of 27.8 percent was shallower than the benchmark's 31.2 percent, and its modified CVaR was marginally lower. The outperformance therefore came from stock selection in rising markets, with an up capture of 1.09, and not from protection in falling ones. The more recent period is less flattering still. Since 2020 the fund's down capture has risen to 1.09, so it has lost more than the benchmark in falling months, and its information ratio has fallen to `r Fact_Pull(Stats_Facts, "2020-2026", "Information Ratio", Key_Col = "Period")`.
 
-The fund's risk was decomposed on every quarter end into the contribution of each holding, using weights multiplied by marginal contributions to risk. Figure \ref{fig:butterfly} stacks each sector's share of capital above the axis and its share of risk below it. From the second half of 2025 the resources band swells below the axis while barely changing above it.
+## Daily Tail Risk
 
-```{r butterfly, fig.height = 6, fig.cap = "SafeCore sector shares of capital and of risk"}
-Plot_Risk_vs_Weight(Risk_Contrib, Title = "SafeCore Sector Shares of Capital and of Risk", Subtitle = "Resources hold a third of the capital but have generated over half of the risk since late 2025", Caption = "Note:\nRisk shares from weight times marginal contribution to risk, using a trailing one year covariance matrix at each quarter end. Calculation own.") # the mirrored capital and risk chart
+```{r q1b_tail, fig.width = 10, fig.height = 7, fig.cap = "Daily Tail Risk of SafeCore and the Capped SWIX"}
+Tail_Risk <- VaR_ES_Calc(Port_Daily, p = 0.95) # daily VaR and ES of the fund and the benchmark by three methods
+Tail_Facts <- Tail_Risk %>% mutate(Key = paste(Name, Measure)) # keyed for the numbers in the text
+Plot_VaR_ES(Port_Daily, Tail_Risk, # the return distributions with the tail measures marked
+            Title = "Daily Tail Risk of SafeCore and the Capped SWIX", # the plot title
+            Subtitle = "SafeCore's bad days are as bad as the benchmark's on every historical and Gaussian measure", # the main message
+            Caption = "Note:\nOne-day measures at 95 percent from daily returns since 2015. Solid lines mark VaR and dashed lines ES. Histograms trimmed at plus and minus 8 percent. Calculation own.") # the note under the plot
 ```
+
+Figure \ref{fig:q1b_tail} compares one-day Value at Risk and Expected Shortfall at 95 percent. The historical VaR is `r Fact_Pull(Tail_Facts, "SafeCore Historical VaR", "Loss", Key_Col = "Key", Pct = 0.01)` for SafeCore against `r Fact_Pull(Tail_Facts, "Capped SWIX Historical VaR", "Loss", Key_Col = "Key", Pct = 0.01)` for the benchmark, and the historical ES is `r Fact_Pull(Tail_Facts, "SafeCore Historical ES", "Loss", Key_Col = "Key", Pct = 0.01)` against `r Fact_Pull(Tail_Facts, "Capped SWIX Historical ES", "Loss", Key_Col = "Key", Pct = 0.01)`. The fund's bad days are as bad as the benchmark's.
+
+## Calendar Year Returns
+
+```{r q1b_calendar, fig.width = 11, fig.height = 5.5, fig.cap = "SafeCore and the Capped SWIX by Calendar Year"}
+Cal_B <- Port_Daily %>% mutate(Year = lubridate::year(date)) %>% group_by(Name, Year) %>% summarise(Ret = prod(1 + Returns) - 1, .groups = "drop") %>% spread(Name, Ret) %>% mutate(Diff = SafeCore - `Capped SWIX`) # each year's return of the fund and benchmark and the gap between them
+Plot_Calendar_Returns(Port_Daily, Fund_Name = "SafeCore", BM_Name = "Capped SWIX", # the yearly returns side by side
+                      Title = "SafeCore and the Capped SWIX by Calendar Year", # the plot title
+                      Subtitle = "SafeCore led in most years, but its average lead shrank sharply after 2020", # the main message
+                      Caption = "Note:\nCompounded daily returns in each calendar year. Labels give SafeCore's lead or lag in percentage points. * Year to September 2026. Calculation own.") # the note under the plot
+```
+
+Figure \ref{fig:q1b_calendar} shows that SafeCore beat its benchmark in `r sum(Cal_B$Diff > 0)` of `r nrow(Cal_B)` calendar years. Its average lead fell from `r sprintf("%.1f", 100 * mean(Cal_B$Diff[Cal_B$Year <= 2019]))` percentage points a year in 2015 to 2019 to `r sprintf("%.1f", 100 * mean(Cal_B$Diff[Cal_B$Year >= 2020 & Cal_B$Year <= 2025]))` points in 2020 to 2025.
+
+## Rolling Volatility Relative to the Benchmark
+
+A full sample average can hide periods when the fund ran materially more or less risk than the benchmark. The figure below follows the gallery's line chart with a filled intersection. The upper panel compares one year rolling volatility, shading the space between the two lines red where SafeCore was more volatile and blue where it was calmer, and the strip underneath isolates the gap itself.
+
+```{r q1b_rolling, fig.height = 6, fig.cap = "SafeCore Rolling Volatility Against the Capped SWIX"}
+Gap_Facts <- Port_Daily %>% Roll_SD_Calc(NSel = 252) %>% select(date, Name, RollSD) %>% spread(Name, RollSD) %>% tidyr::drop_na() %>% rename(BM = `Capped SWIX`) %>% summarise(Share = mean(SafeCore > BM), Avg_Gap = mean(SafeCore - BM)) # how often and by how much SafeCore ran more risk than its benchmark, used in the text
+Plot_Roll_Vol_Gap(Port_Daily, Fund = "SafeCore", BM = "Capped SWIX", NSel = 252, # rolling one year volatility of the fund against its benchmark
+                  Title = "SafeCore Rolling Volatility Against the Capped SWIX", # the plot title
+                  Subtitle = "SafeCore has run slightly more risk than its benchmark on nine days out of ten", # the main message
+                  Caption = "Note:\nRolling 252 day annualised standard deviation of daily returns. The lower strip shows SafeCore minus the Capped SWIX. Calculation own.") # the note under the plot
+```
+
+The figure shows that SafeCore's excess volatility is persistent, and not confined to a few episodes. The gap strip is red on `r Pct_Text(Gap_Facts$Share, accuracy = 1)` of days since the rolling window begins in 2016, by an average of `r sprintf("%.1f", 100 * Gap_Facts$Avg_Gap)` percentage points, and it widened again from late 2025 as rolling volatility for both rose towards 20 percent. The only sustained blue stretch, in which SafeCore was calmer, came in 2017. The gap is small in absolute terms, but its persistence is telling, since a fund that managed volatility deliberately would be expected to sit below its benchmark at least some of the time.
+
+A ballast should also earn its keep when markets are stressed, so the stratification from Part A is repeated for SafeCore and its benchmark.
+
+```{r q1b_regimes}
+SC_Strat <- Vol_Stratify(Port_Daily, States = State_df, Hi_Q = 0.8, Lo_Q = 0.2) %>% select(State, Regime, Name, SD) %>% spread(Name, SD) %>% rename(BM = `Capped SWIX`) %>% mutate(Rel = SafeCore / BM) # SafeCore volatility relative to its benchmark in the high and low months of each state variable from Part A, used in the text
+```
+
+In the stressed months of every state variable, SafeCore's volatility is between `r sprintf("%.2f", min(SC_Strat$Rel[SC_Strat$Regime == "High"]))` and `r sprintf("%.2f", max(SC_Strat$Rel[SC_Strat$Regime == "High"]))` times the benchmark's, while in calm months it is between `r Pct_Text(min(SC_Strat$Rel[SC_Strat$Regime == "Low"]) - 1, accuracy = 1)` and `r Pct_Text(max(SC_Strat$Rel[SC_Strat$Regime == "Low"]) - 1, accuracy = 1)` more volatile. SafeCore therefore adds risk when markets are quiet and simply matches the market when they are not, which is the opposite of the profile the seminar recommended.
+
+## Sources of Portfolio Volatility
+
+The next question is where SafeCore's volatility comes from. On each quarter end since 2015, the fund's volatility is decomposed into the contribution of each holding, using the trailing year of daily returns. Following Practical 2, each stock's contribution is its weight multiplied by its marginal contribution to risk, which captures both its own volatility and its covariance with the rest of the fund, so that the contributions sum exactly to the fund's total volatility. The mirrored area chart below stacks each sector's share of capital above the axis and its share of risk below it, so that any sector whose risk outgrows its capital shows up as a band that is thicker underneath than on top.
+
+```{r q1b_risk, fig.width = 10, fig.height = 6.5, fig.cap = "SafeCore Sector Shares of Capital and of Risk"}
+Risk_Dates <- SafeCore %>% distinct(date) %>% filter(date >= lubridate::ymd(20151231), lubridate::month(date) %in% c(3, 6, 9, 12) | date == max(date)) %>% pull(date) # every quarter end since 2015, plus the latest holdings date
+Risk_Contrib <- Risk_Dates %>% map_df(~Risk_Contribution_Calc(SafeCore, Stock_Returns, Date_Sel = .x, Lookback_Months = 12)) # each holding's contribution to fund volatility on every date
+Sector_Shares <- Risk_Contrib %>% mutate(Sector = coalesce(Sector, "Unclassified")) %>% group_by(date, Sector) %>% summarise(Capital = sum(Weight), Risk = sum(Risk_Share), .groups = "drop") %>% mutate(Key = paste(Sector, date)) # sector shares of capital and of risk on every date, used in the text
+Plot_Risk_vs_Weight(Risk_Contrib, # sector shares of capital and of risk through time
+                    Title = "SafeCore Sector Shares of Capital and of Risk", # the plot title
+                    Subtitle = "Resources hold a third of the capital but have generated over half of the risk since late 2025", # the main message
+                    Caption = "Note:\nRisk shares from weight times marginal contribution to risk, using a trailing one year covariance matrix at each quarter end. Calculation own.") # the note under the plot
+```
+
+The chart reveals a sharp change in where the fund's risk sits. Until 2024 the two halves broadly mirror each other, with financials taking a somewhat larger share of risk than of capital, at `r Fact_Pull(Sector_Shares, "Financials 2024-12-31", "Risk", Key_Col = "Key", Pct = 1)` against `r Fact_Pull(Sector_Shares, "Financials 2024-12-31", "Capital", Key_Col = "Key", Pct = 1)` at the end of 2024. From the second half of 2025 the red resources band swells below the axis while barely changing above it. At the end of 2025 resources made up `r Fact_Pull(Sector_Shares, "Resources 2025-12-31", "Capital", Key_Col = "Key", Pct = 1)` of the fund but generated `r Fact_Pull(Sector_Shares, "Resources 2025-12-31", "Risk", Key_Col = "Key", Pct = 1)` of its volatility, and at the latest holdings date the figures were `r Fact_Pull(Sector_Shares, paste("Resources", max(Sector_Shares$date)), "Capital", Key_Col = "Key", Pct = 1)` and `r Fact_Pull(Sector_Shares, paste("Resources", max(Sector_Shares$date)), "Risk", Key_Col = "Key", Pct = 1)`. The two unclassified holdings, VAL and PAN, add a further `r Fact_Pull(Sector_Shares, paste("Unclassified", max(Sector_Shares$date)), "Risk", Key_Col = "Key", Pct = 1)` of risk on `r Fact_Pull(Sector_Shares, paste("Unclassified", max(Sector_Shares$date)), "Capital", Key_Col = "Key", Pct = 1)` of capital, and since they appear to be Valterra Platinum and Pan African Resources, the true resource share of risk is closer to two thirds.
 
 ## The Largest Contributors to Risk
 
-Figure \ref{fig:arrows} shows why the resources band swelled. At the latest holdings date AngloGold Ashanti and Gold Fields carried `r Pct_Text(sum(Latest_Risk$Risk_Share[Latest_Risk$Tickers %in% c("ANG", "GFI")]))` of the fund's risk on `r Pct_Text(sum(Latest_Risk$Weight[Latest_Risk$Tickers %in% c("ANG", "GFI")]))` of its capital, so the fund's volatility had become largely a bet on the gold price.
-
-```{r arrows, fig.height = 5, fig.cap = "Largest contributors to SafeCore's volatility at the latest holdings date"}
-Plot_Top_Risk(Latest_Risk, Top_N = 12, Title = "Largest Contributors to SafeCore's Volatility", Subtitle = "Two gold miners carry 45 percent of the fund's risk on less than 20 percent of its capital", Caption = glue::glue("Note:\nEx ante fund volatility of {scales::percent(unique(Latest_Risk$Port_Vol), accuracy = 0.1)}. Calculation own.")) # arrows from capital to risk
+```{r q1b_top_risk, fig.cap = "Largest Contributors to SafeCores Volatility"}
+Latest_Risk <- Risk_Contrib %>% filter(date == max(date)) # the decomposition on the latest holdings date
+Risk_Conc <- Latest_Risk %>% summarise(Top5_Capital = sum(sort(Weight, decreasing = TRUE)[1:5]), Top5_Risk = sum(sort(Risk_Share, decreasing = TRUE)[1:5]), Gold_Risk = sum(Risk_Share[Tickers %in% c("ANG", "GFI")]), Gold_Capital = sum(Weight[Tickers %in% c("ANG", "GFI")])) # concentration of capital and risk, used in the text
+Plot_Top_Risk(Latest_Risk, Top_N = 12, # the twelve largest contributors to risk
+              Title = "Largest Contributors to SafeCore's Volatility", # the plot title
+              Subtitle = "Two gold miners carry 45 percent of the fund's risk on less than 20 percent of its capital", # the main message
+              Caption = glue::glue("Note:\nHoldings at {format(max(Latest_Risk$date), '%d %B %Y')}. Ex ante fund volatility of {scales::percent(unique(Latest_Risk$Port_Vol), accuracy = 0.1)} from a trailing one year covariance matrix. Calculation own.")) # the note under the plot, including the date and the fund volatility
 ```
 
-## Factor Exposures
+Figure \ref{fig:q1b_top_risk} shows why. At the latest holdings date AngloGold Ashanti and Gold Fields carried `r Pct_Text(sum(Latest_Risk$Risk_Share[Latest_Risk$Tickers %in% c("ANG", "GFI")]))` of the fund's risk on `r Pct_Text(sum(Latest_Risk$Weight[Latest_Risk$Tickers %in% c("ANG", "GFI")]))` of its capital, so the fund's volatility had become largely a bet on the gold price.
 
-Own momentum and low volatility scores were built from prices, with momentum as the return from six months to one month ago and low volatility as the negative of six month realised volatility, both standardised within the vendor's universe. Figure \ref{fig:scores} shows that the vendor's momentum score is almost certainly a 12-1 measure, since a 12-1 score built from prices matches it with an average rank correlation of 0.93. The vendor's volatility score agrees with realised volatility at only 0.10 and tracks downside beta most closely, at -0.34. When the scores are aggregated into composite exposures for each strategy, the own low volatility score gives the local low volatility index `r Fact_Pull(Comp_Avg, "LowVol | Own Low Volatility", "Score", Key_Col = "Key")`, while the vendor's score gives it `r Fact_Pull(Comp_Avg, "LowVol | Vendor Volatility Sensitivity", "Score", Key_Col = "Key")`, no different from the market. SafeCore tilts towards earnings quality, value and momentum, but its own low volatility exposure of `r Fact_Pull(Comp_Avg, "SafeCore | Own Low Volatility", "Score", Key_Col = "Key")` is indistinguishable from the benchmark's `r Fact_Pull(Comp_Avg, "Capped SWIX | Own Low Volatility", "Score", Key_Col = "Key")`.
+## Building Own Momentum and Low Volatility Scores
 
-```{r scores, fig.width = 10, fig.height = 6, fig.cap = "Own scores against the vendor's scores"}
-Plot_Score_Cor(Score_Cor, Diag = Score_Diag, Title = "Own Scores Against the Vendor's Scores", Subtitle = "Vendor momentum matches a 12-1 definition almost exactly, while its volatility score tracks downside beta, not volatility", Caption = "Note:\nMonthly Spearman rank correlations across stocks. The heatmap averages each combination over all months. Calculation own.") # the score comparison and diagnostic heatmap
+Momentum is measured as the cumulative return from six months to one month before each month end, following the suggestion in the paper. Skipping the most recent month avoids the short term reversal effect, in which last month's winners tend to give back part of their gains. A six month window is preferred to the more common twelve month window because it responds faster when market leadership rotates, which matters for a fund concerned with volatility. The low volatility score is the negative of each stock's annualised realised volatility over the past six months, so that a higher score always indicates a more defensive stock. Realised volatility is preferred to beta because SafeCore's concern is the total volatility of its holdings, and because realised volatility is highly persistent, which makes the recent past a reasonable guide to the near future.
+
+Both measures use daily returns capped at 25 percent and require a stock to have traded on at least 80 percent of the days in the window. Each month they are converted into cross-sectional z-scores within the vendor's universe and winsorised at three standard deviations, which places them on the same scale as the vendor's scores. A 12-1 momentum score and each stock's market and downside beta are also calculated, purely to diagnose what the vendor's scores measure.
+
+```{r q1b_own_scores}
+Score_Dates <- sort(unique(Factor_Scores$date)) # the month ends on which the vendor provides scores
+Own_Scores <- Own_Factor_Scores(Stock_Returns, Score_Dates, Mom_Months = 6, Skip_Months = 1, Vol_Months = 6, Ret_Cap = 0.25, Min_Coverage = 0.8) # own 6-1 momentum and 6 month realised volatility for every stock
+Own_Mom12 <- Own_Factor_Scores(Stock_Returns, Score_Dates, Mom_Months = 12, Skip_Months = 1, Vol_Months = 6) %>% select(date, Tickers, Mom12_Raw = Mom_Raw) # a 12-1 momentum variant, used only as a diagnostic
+Stock_Betas <- Stock_Beta_Calc(Stock_Returns, Idx_Daily %>% filter(Tickers == "J433") %>% select(date, Mkt = Returns), Score_Dates, Months = 12) # market and downside betas against the Capped SWIX, used only as a diagnostic
+Scores_All <-
+    Factor_Scores %>%
+    spread(Factor, Factor_Value) %>% # one column per vendor factor
+    left_join(Own_Scores, by = c("date", "Tickers")) %>% # attach the own measures
+    left_join(Own_Mom12, by = c("date", "Tickers")) %>% # attach the 12-1 momentum variant
+    left_join(Stock_Betas, by = c("date", "Tickers")) %>% # attach the betas
+    mutate(LowVol_Raw = -Vol_Raw) %>% # flip the sign so that a higher score means lower volatility
+    Zscore_Calc(Cols = c("Mom_Raw", "Mom12_Raw", "LowVol_Raw"), Cap = 3) %>% # standardise within the vendor's universe each month
+    rename(Momentum_Own = Mom_Raw, Momentum12_Own = Mom12_Raw, LowVol_Own = LowVol_Raw) # clearer names for the own scores
 ```
 
-```{r part_c_calcs, include=FALSE}
-SWIX_Cons <- Local_Index_Constituents %>% filter(Index == "Capped SWIX") # daily Capped SWIX constituents
-Dispersion <- Dispersion_Calc(SWIX_Cons, NSel = 21, Ret_Cap = 0.5) # rolling one month dispersion
-Disp_Events <- tibble(date = lubridate::ymd(c(20220707, 20260828)), Label = c("Naspers and Prosus buyback", "Gold miners rally")) # the two largest spikes
-Month_Ends <- SWIX_Cons %>% mutate(YM = format(date, "%Y%m")) %>% group_by(YM) %>% summarise(date = max(date)) %>% pull(date) # month ends
-Corr <- Avg_Corr_Calc(SWIX_Cons, Month_Ends, Lookback = 63, Top_N = 40, Ret_Cap = 0.5) # correlations and the variance split
-Corr_Facts <- Corr %>% mutate(Period = ifelse(date < lubridate::ymd(20260101), "Before 2026", "2026")) %>% group_by(Period) %>% summarise(Implied = mean(Implied_Corr), Share = mean(Dispersion_Var / (Common_Var + Dispersion_Var))) # averages used in the text
-Macro_Gauges <- bind_rows(Implied_Vol, Uncertainty_Indexes, Local_Cncy_Vol_Index %>% select(-Description), Gl_Cncy_Vol_Index) # macro gauges quoted as levels
-Commod_Rets <- Commods %>% TRI_Returns_Calc(Start_Date = lubridate::ymd(20200101)) # daily commodity returns
-Macro_Names <- c(VIX = "US implied vol (VIX)", MOVE_Index = "Bond vol (MOVE)", EPUCGLCP = "Global policy uncertainty", Oil_Brent_Vol = "Brent oil vol", Gold_Vol = "Gold vol", SAVIUSD = "Rand vol (SAVIUSD)") # readable names
-Macro_Monthly <- State_Monthly_Calc(Level_df = Macro_Gauges, Level_Sel = c("VIX", "MOVE_Index", "EPUCGLCP", "SAVIUSD"), Vol_df = Commod_Rets, Vol_Sel = c("Oil_Brent", "Gold")) %>% mutate(State = recode(State, !!!Macro_Names)) %>% spread(State, Value) # monthly macro panel
-Macro_Panel <- Dispersion %>% mutate(YM = format(date, "%Y%B")) %>% group_by(YM) %>% filter(date == max(date)) %>% ungroup() %>% left_join(Corr %>% mutate(YM = format(date, "%Y%B")) %>% select(YM, Implied_Corr), by = "YM") %>% left_join(Macro_Monthly, by = "YM") # dispersion, correlation and macro variables by month
-Macro_Coefs <- bind_rows(Macro_Regression(Macro_Panel, Y = "Dispersion_W", X_Vars = unname(Macro_Names), Lag = 3, Label = "Weighted dispersion"), Macro_Regression(Macro_Panel, Y = "Implied_Corr", X_Vars = unname(Macro_Names), Lag = 3, Label = "Implied correlation")) # both regressions
+## Own Scores Against the Vendor Scores
+
+The comparison uses the Spearman rank correlation across stocks each month, since what matters for a factor portfolio is whether two scores rank stocks in the same order, regardless of whether their values coincide. The left panel tracks three comparisons through time, labelled directly at the end of each line, while the heatmap on the right reports the average rank correlation between every own measure and every vendor factor, which shows what each vendor factor actually tracks.
+
+```{r q1b_score_compare, fig.width = 11, fig.height = 6, fig.cap = "Own Scores Against the Vendors Scores"}
+Score_Pairs <- tibble(X = c("Momentum_Own", "Momentum12_Own", "LowVol_Own"), # the own scores
+                      Y = c("Momentum", "Momentum", "Volatility Sensitivity"), # the vendor score each is compared with
+                      Label = c("Own 6-1 momentum vs vendor", "Own 12-1 momentum vs vendor", "Own low volatility vs vendor volatility sensitivity")) # readable labels
+Score_Cor <- Score_Rank_Cor(Scores_All, Score_Pairs) # the monthly rank correlation of each pair
+Own_Names <- c(Beta = "Market beta", Downside_Beta = "Downside beta", LowVol_Own = "Own low volatility", Momentum_Own = "Own 6-1 momentum", Momentum12_Own = "Own 12-1 momentum") # readable names for the own measures
+Diag_Pairs <- tidyr::expand_grid(Y = c("Earnings Quality", "Growth", "Momentum", "Value", "Volatility Sensitivity"), X = names(Own_Names)) %>% mutate(Label = paste(X, Y, sep = " | ")) # every own measure against every vendor factor, with a label that can be split again
+Score_Diag <-
+    Score_Rank_Cor(Scores_All, Diag_Pairs) %>% # the monthly rank correlation of every combination
+    group_by(Label) %>% # one number per combination
+    summarise(Rho = mean(Rho)) %>% # the average over all months
+    tidyr::separate(Label, c("Own", "Vendor"), sep = " \\| ") %>% # split the label back into its two parts
+    mutate(Own = factor(recode(Own, !!!Own_Names), levels = rev(Own_Names))) # readable names in a fixed order
+Plot_Score_Cor(Score_Cor, Diag = Score_Diag, # the time series and the diagnostic heatmap side by side
+               Title = "Own Scores Against the Vendor's Scores", # the plot title
+               Subtitle = "Vendor momentum matches a 12-1 definition almost exactly, while its volatility score tracks downside beta, not volatility", # the main message
+               Caption = "Note:\nMonthly Spearman rank correlations across stocks. Dashed lines show averages. The heatmap averages each combination over all months. Calculation own.") # the note under the plot
 ```
+
+The comparison yields two clear findings about the vendor's data. The vendor's momentum score is almost certainly a 12-1 measure, since a 12-1 score built from prices ranks stocks the same way with an average correlation of 0.93, while the 6-1 score proposed in the paper agrees only at 0.60 and dropped close to zero in early 2021. The two momentum scores therefore answer different questions, with the shorter window capturing more recent shifts in leadership.
+
+The vendor's volatility score is more problematic. It has an average rank correlation of only 0.10 with the own low volatility score and fell below zero for much of 2021 and 2022. The heatmap suggests what it measures instead, since its strongest relationship is with downside beta, at -0.34, meaning that stocks which fall most when the market falls receive the lowest scores. Volatility Sensitivity is therefore closer to a measure of downside market exposure than of total volatility. A further oddity is that the vendor's earnings quality score correlates at -0.33 with the own low volatility score, so the vendor rates more volatile stocks as having higher quality earnings, which is the opposite of what quality strategies usually assume. Both findings counsel caution before using the vendor scores to steer a defensive mandate.
+
+## Composite Factor Scores Across Strategies
+
+```{r q1b_composite, fig.width = 11, fig.height = 7, fig.cap = "Composite Factor Scores by Strategy"}
+Strategy_Holdings <-
+    Local_Index_Constituents %>%
+    mutate(YM = format(date, "%Y%m")) %>% # a year and month label
+    group_by(Index, YM) %>% # one set of holdings per index per month
+    filter(date == max(date)) %>% # keep the last trading day of each month
+    ungroup() %>% # remove the grouping again
+    select(date, Portfolio = Index, Tickers, Weight = weight) # the shape that the composite score function expects
+All_Holdings <- bind_rows(Strategy_Holdings, SafeCore %>% filter(date >= lubridate::ymd(20200101)) %>% select(date, Portfolio = Fund, Tickers, Weight)) # the strategy indexes and SafeCore together
+Scores_Long <-
+    Scores_All %>%
+    select(date, Tickers, `Earnings Quality`, Growth, Value, `Vendor Momentum` = Momentum, `Vendor Volatility Sensitivity` = `Volatility Sensitivity`, # the vendor factors
+           `Own Momentum (6-1)` = Momentum_Own, `Own Low Volatility` = LowVol_Own) %>% # and the own scores
+    gather(Factor, Score, -date, -Tickers) # long format, one row per stock, factor and month
+Port_Factor_Scores <- Portfolio_Factor_Scores(All_Holdings, Scores_Long) # the weighted average score of every portfolio for every factor and month
+Comp_Avg <- Port_Factor_Scores %>% filter(date >= lubridate::ymd(20200801)) %>% group_by(Portfolio, Factor) %>% summarise(Score = mean(Score), .groups = "drop") %>% mutate(Key = paste(Portfolio, Factor, sep = " | ")) # the average composite score of every portfolio and factor, used in the text
+Plot_Factor_Lollipops(Port_Factor_Scores, Start_Date = lubridate::ymd(20200801), Fund = "SafeCore", BM = "Capped SWIX", # average exposures since the strategy index data begins
+                      Port_Order = c("SafeCore", "Capped SWIX", "LowVol", "Momentum", "Value", "Quality", "Large Caps", "Mid Caps", "Small Caps", "REITS"), # SafeCore and its benchmark first, then the strategies
+                      Title = "Composite Factor Scores by Strategy", # the plot title
+                      Subtitle = "SafeCore tilts towards earnings quality, value and momentum, but has no low volatility tilt", # the main message
+                      Caption = "Note:\nWeighted average z-scores of holdings, averaged from August 2020 to August 2026. Calculation own.") # the note under the plot
+```
+
+Figure \ref{fig:q1b_composite} shows holdings-weighted composite scores. The own low volatility score identifies the LowVol index correctly, at `r Fact_Pull(Comp_Avg, "LowVol | Own Low Volatility", "Score", Key_Col = "Key")` against `r Fact_Pull(Comp_Avg, "Capped SWIX | Own Low Volatility", "Score", Key_Col = "Key")` for the benchmark, while SafeCore tilts towards quality, value and momentum but carries no low volatility tilt.
+
+## SafeCore's Active Factor Exposures
+
+```{r q1b_active, fig.width = 10, fig.height = 8, fig.cap = "SafeCore Active Factor Exposures Against the Capped SWIX"}
+Active_Factors <- c("Own Low Volatility", "Vendor Volatility Sensitivity", "Own Momentum (6-1)", "Vendor Momentum", "Earnings Quality", "Value") # the factors most relevant to the volatility question, leaving out growth, which sits close to zero throughout
+Active_Period <-
+    Port_Factor_Scores %>%
+    filter(Portfolio %in% c("SafeCore", "Capped SWIX"), Factor %in% Active_Factors, date >= lubridate::ymd(20200801)) %>% # the fund and benchmark scores for the chosen factors
+    select(date, Portfolio, Factor, Score) %>% # keep only what the summary needs
+    spread(Portfolio, Score) %>% # one column for the fund and one for the benchmark
+    mutate(Active = SafeCore - `Capped SWIX`, Period = ifelse(date < lubridate::ymd(20250101), "Before 2025", ifelse(date < lubridate::ymd(20260101), "2025", "2026"))) %>% # the active exposure and the period it falls in
+    group_by(Factor, Period) %>% # one number per factor per period
+    summarise(Active = mean(Active), .groups = "drop") %>% # the average active exposure in the period
+    mutate(Key = paste(Factor, Period, sep = " | ")) # a key for the inline numbers in the text
+Plot_Active_Exposure(Port_Factor_Scores %>% filter(date >= lubridate::ymd(20200801), Factor %in% Active_Factors), Fund = "SafeCore", BM = "Capped SWIX", # active exposures of SafeCore against its benchmark
+                     Title = "SafeCore Active Factor Exposures Against the Capped SWIX", # the plot title
+                     Subtitle = "In 2026 the fund became a momentum play with more downside exposure than its benchmark", # the main message
+                     Caption = "Note:\nSafeCore composite z-score minus Capped SWIX composite z-score. Orange marks an overweight tilt and blue an underweight tilt. Calculation own.") # the note under the plot
+```
+
+Figure \ref{fig:q1b_active} tracks active exposures through time. In 2026 the fund became a momentum play, with an active vendor momentum exposure of `r Fact_Pull(Active_Period, "Vendor Momentum | 2026", "Active", Key_Col = "Key")` against `r Fact_Pull(Active_Period, "Vendor Momentum | Before 2025", "Active", Key_Col = "Key")` before 2025.
+
+## Summary of Part B
+
+SafeCore does not navigate volatility effectively, although it has been successful on other measures. The fund outperformed the Capped SWIX by 2.5 percentage points a year with an information ratio of `r Fact_Pull(Stats_Facts, "2015-2026", "Information Ratio", Key_Col = "Period")`, and its drawdowns were somewhat shallower. That success came from stock selection in rising markets, not from risk management. The fund has been slightly more volatile than its benchmark on `r Pct_Text(Gap_Facts$Share, accuracy = 1)` of days, it merely matches the benchmark's volatility in stressed regimes, it has lost more than the benchmark in falling months since 2020, and it carries no meaningful low volatility exposure. Its risk has also become highly concentrated, with two gold miners generating `r Pct_Text(Risk_Conc$Gold_Risk, accuracy = 1)` of the fund's volatility at the latest holdings date.
+
+For the team, three implications follow. The fund's risk is currently a concentrated bet on precious metals, far from a broad equity exposure, which the investment committee should either accept explicitly or reduce. A low volatility sleeve or a cap on any single stock's contribution to risk would be a more direct route to a risk ballast than relying on the fund's existing quality and value tilts. Lastly, the vendor's volatility score should not be used to build such a sleeve, since it fails to identify the existing low volatility index, and a score built from realised volatility does the job considerably better.
 
 # Dispersion, Correlation and Alpha Opportunity \label{PartC}
 
+## Scope and Method
+
+This part measures the opportunity that the local market has offered active managers since 2020 and how that opportunity has moved with the global macro backdrop. Alpha opportunity is the scope for a manager's portfolio to differ in outcome from the benchmark, and it depends on two things. Stocks must move by different amounts, which is measured by cross-sectional dispersion, and they must not all move together, which is measured by inter-constituent correlation. The analysis therefore measures both, shows how they combine, tests whether the opportunity translated into different outcomes for South African active managers, and finally relates both measures to global macro variables.
+
+The analysis uses the daily constituents and weights of the Capped SWIX, which start in August 2020 and so match the period the question asks about. Daily constituent returns above 50 percent in absolute value are winsorised, following the dispersion practical, since the file contains a handful of implausible values.
+
 ## Cross-Sectional Volatility
 
-Alpha opportunity requires stocks to move by different amounts and not all in the same direction. Weighted cross-sectional dispersion is used as the headline measure, since a manager is judged against a cap-weighted benchmark and a large move in a heavyweight forces an active bet on everyone. Figure \ref{fig:dispersion} shows that dispersion has hovered around 8 to 9 percent since 2020, with sharp spikes when heavyweights made large stock-specific moves, first when Naspers and Prosus rallied on their share buyback in 2022 and then when the gold miners rallied in 2026.
+Dispersion is measured as in the Practical 2 bonus, as the cross-sectional volatility of each stock's compounded return over a rolling 21 trading day window. The weighted version follows the formula in the paper, weighting each stock's squared deviation from the index return by its index weight, while the unweighted version is the simple standard deviation across stocks. The weighted measure is preferred as the headline, because an active manager is measured against a cap-weighted benchmark. A large move in a heavyweight stock forces every manager into a large active bet whether they own the stock or not, while a large move in a stock that makes up 0.1 percent of the index barely matters. The unweighted measure is shown for comparison, since it gives the same voice to small and illiquid stocks whose returns are noisier.
 
-```{r dispersion, fig.height = 4.5, fig.cap = "Cross-sectional volatility of the Capped SWIX"}
-Plot_Dispersion(Dispersion, Events = Disp_Events, Smooth_N = 63, Title = "Cross-Sectional Volatility of the Capped SWIX", Subtitle = "Weighted dispersion spikes when heavyweights make large stock-specific moves, as Naspers did in 2022 and the gold miners did in 2026", Caption = "Note:\nDispersion of rolling 21 day constituent returns. Bold lines are 63 day averages. Calculation own.") # weighted and unweighted dispersion
+```{r q1c_dispersion, fig.cap = "Cross-Sectional Volatility of the Capped SWIX"}
+SWIX_Cons <- Local_Index_Constituents %>% filter(Index == "Capped SWIX") # daily constituents, weights and returns of the Capped SWIX
+Dispersion <- Dispersion_Calc(SWIX_Cons, NSel = 21, Ret_Cap = 0.5) # rolling one month weighted and unweighted dispersion
+Disp_Events <- tibble(date = lubridate::ymd(c(20220707, 20260828)), Label = c("Naspers and Prosus buyback", "Gold miners rally")) # the two largest spikes, identified by decomposing them stock by stock
+Disp_Facts <- Dispersion %>% mutate(Period = ifelse(date < lubridate::ymd(20260101), "Before 2026", "2026")) %>% group_by(Period) %>% summarise(W = mean(Dispersion_W), U = mean(Dispersion_U), Max_W = max(Dispersion_W)) # average and peak dispersion before and during 2026, used in the text
+Plot_Dispersion(Dispersion, Events = Disp_Events, Smooth_N = 63, # plot both dispersion measures with the event spikes labelled
+                Title = "Cross-Sectional Volatility of the Capped SWIX", # the plot title
+                Subtitle = "Weighted dispersion spikes when heavyweights make large stock-specific moves, as Naspers did in 2022 and the gold miners did in 2026", # the main message
+                Caption = "Note:\nDispersion of rolling 21 day constituent returns. Faded lines are daily values and bold lines are 63 day averages. Calculation own.") # the note under the plot
 ```
 
-## Correlation and the Opportunity Set
+The two measures tell different stories at the extremes. Weighted dispersion averaged `r Fact_Pull(Disp_Facts, "Before 2026", "W", Key_Col = "Period", Pct = 0.1)` before 2026 against `r Fact_Pull(Disp_Facts, "Before 2026", "U", Key_Col = "Period", Pct = 0.1)` for the unweighted measure, but its spikes are far sharper, reaching `r Fact_Pull(Disp_Facts, "Before 2026", "Max_W", Key_Col = "Period", Pct = 0.1)` in July 2022. Decomposing that spike stock by stock shows that Naspers and Prosus alone account for most of it, after the two shares rallied by more than 50 percent in a month on the announcement of an open-ended share buyback. The second spike, in August 2026, came from the gold miners, which gained around 40 percent in a month while the index rose by less than 10 percent. These episodes show why the weighted measure is the right one for this question. A manager who was underweight Naspers in mid 2022 or underweight gold in 2026 faced a large relative loss, and only the weighted measure registers that risk. In 2026 weighted dispersion averaged `r Fact_Pull(Disp_Facts, "2026", "W", Key_Col = "Period", Pct = 0.1)`, close to its earlier level, so the volatility episode of Part A did not translate into a lasting rise in dispersion.
 
-Correlation tells the other half of the story. Figure \ref{fig:correlation} compares the average pairwise correlation of the 40 largest constituents with a cap-weighted implied correlation, which finds the single correlation that reproduces the variance of the cap-weighted basket. The implied correlation averaged `r Fact_Pull(Corr_Facts, "2026", "Implied", Key_Col = "Period")` in 2026 against `r Fact_Pull(Corr_Facts, "Before 2026", "Implied", Key_Col = "Period")` before it, so the largest stocks moved together more closely than at any point since 2020. Splitting average stock variance into its common and diversifiable parts shows the consequence. The diversifiable share of stock risk, which is the part a stock picker can exploit, fell from an average of `r Fact_Pull(Corr_Facts, "Before 2026", "Share", Key_Col = "Period", Pct = 1)` to `r Fact_Pull(Corr_Facts, "2026", "Share", Key_Col = "Period", Pct = 1)` in 2026. Active managers' results also diverged more when dispersion was high, but the share of managers beating the benchmark did not rise with it.
+## Rolling Inter-Constituent Correlation
 
-```{r correlation, fig.height = 4.5, fig.cap = "Correlation among the 40 largest Capped SWIX constituents"}
-Plot_Avg_Corr(Corr, Title = "Correlation Among the 40 Largest Capped SWIX Constituents", Subtitle = "In 2026 the largest stocks moved together more closely than at any point since 2020", Caption = "Note:\nRolling 63 day correlations of daily returns at each month end. Calculation own.") # pairwise and implied correlation
+Correlation is measured over a rolling three month window at each month end for the 40 largest constituents, which make up the bulk of the index's weight. Two versions are calculated. The first is the simple average of all pairwise correlations. The second is a cap-weighted implied correlation, built in the spirit of the CBOE implied correlation index, which finds the single correlation that, applied to every pair of stocks, reproduces the actual variance of the cap-weighted basket. Because it weights pairs by the size of the stocks involved, the gap between the two shows whether the largest stocks are moving together more or less than the average pair.
+
+```{r q1c_correlation, fig.cap = "Correlation Among the 40 Largest Capped SWIX Constituents"}
+Month_Ends <- SWIX_Cons %>% mutate(YM = format(date, "%Y%m")) %>% group_by(YM) %>% summarise(date = max(date)) %>% pull(date) # the last trading day of every month
+Corr <- Avg_Corr_Calc(SWIX_Cons, Month_Ends, Lookback = 63, Top_N = 40, Ret_Cap = 0.5) # average pairwise and implied correlation, plus the variance split, at every month end
+Corr_Facts <- Corr %>% mutate(Period = ifelse(date < lubridate::ymd(20260101), "Before 2026", "2026")) %>% group_by(Period) %>% summarise(Implied = mean(Implied_Corr), Pairwise = mean(Avg_Corr), Share = mean(Dispersion_Var / (Common_Var + Dispersion_Var)), Vol = mean(Avg_Vol)) # averages before and during 2026, used in the text
+Plot_Avg_Corr(Corr, # plot both correlation measures
+              Title = "Correlation Among the 40 Largest Capped SWIX Constituents", # the plot title
+              Subtitle = "In 2026 the largest stocks moved together more closely than at any point since 2020", # the main message
+              Caption = "Note:\nRolling 63 day correlations of daily returns at each month end. Red shading marks months when the cap-weighted measure exceeds the pairwise average. Calculation own.") # the note under the plot
 ```
 
-## The Global Macro Backdrop
+The implied correlation ranged from `r sprintf("%.2f", min(Corr$Implied_Corr))` to `r sprintf("%.2f", max(Corr$Implied_Corr))` over the sample, with peaks in mid 2022 during global monetary tightening and in 2026. The 2026 peak is the more striking of the two. The cap-weighted implied correlation averaged `r Fact_Pull(Corr_Facts, "2026", "Implied", Key_Col = "Period")` in 2026 against `r Fact_Pull(Corr_Facts, "Before 2026", "Implied", Key_Col = "Period")` before it, and for most of 2026 it sat well above the simple pairwise average, which shows that the largest stocks in particular were moving as a block. That pattern is consistent with Part B, where the index's heaviest resource names drove a growing share of risk. In mid 2025, by contrast, the implied correlation fell below 0.1, the most favourable environment for stock pickers in the sample.
 
-Figure \ref{fig:macro} relates both measures to global macro variables in regressions with Newey-West standard errors. Oil volatility and bond market volatility significantly raise the implied correlation, which is the better explained of the two models, with an R-squared of `r sprintf("%.2f", unique(Macro_Coefs$R2[Macro_Coefs$Model == "Implied correlation"]))`. Both are shocks that reach the whole local market at once, through commodity prices and the global cost of capital, so they push local stocks to move together and compress the opportunity set. US equity volatility is the one significant positive driver of dispersion, while global policy uncertainty is insignificant in both models.
+## How Volatility and Correlation Combine
 
-```{r macro, fig.height = 4.8, fig.cap = "Standardised effects of global macro variables on dispersion and correlation"}
-Plot_Macro_Coefs(Macro_Coefs, Title = "What Moves Alpha Opportunity in the Local Market", Subtitle = "Oil and bond market volatility make local stocks move together, while US equity volatility widens dispersion", Caption = "Note:\nStandardised OLS coefficients with 95 percent intervals from Newey-West standard errors. Monthly data from September 2020. Calculation own.") # the coefficient plot
+Dispersion and correlation are two sides of the same coin. The weighted average variance of the constituents can be split exactly into the part that is common to the basket, which no stock picker can avoid, and the remainder, which is the weighted cross-sectional variance. The remainder is the alpha opportunity, and its share of total stock risk is the fraction of a stock's volatility that an active manager can actually exploit.
+
+```{r q1c_split, fig.cap = "Splitting Stock Risk into Common and Diversifiable Parts"}
+Plot_Opportunity_Split(Corr, # plot the split of average stock variance into its common and diversifiable parts
+                       Title = "Splitting Stock Risk into Common and Diversifiable Parts", # the plot title
+                       Subtitle = "Stock risk rose in 2026, but a larger share of it was common to the whole market", # the main message
+                       Caption = "Note:\nAverage stock variance of the 40 largest constituents over rolling 63 day windows, split into basket variance and the remainder. Calculation own.") # the note under the plot
 ```
+
+The split shows that total stock risk and alpha opportunity do not always move together. Average stock volatility rose to `r Fact_Pull(Corr_Facts, "2026", "Vol", Key_Col = "Period", Pct = 1)` in 2026 from `r Fact_Pull(Corr_Facts, "Before 2026", "Vol", Key_Col = "Period", Pct = 1)` before it, yet the diversifiable share of that risk fell from an average of `r Fact_Pull(Corr_Facts, "Before 2026", "Share", Key_Col = "Period", Pct = 1)` to `r Fact_Pull(Corr_Facts, "2026", "Share", Key_Col = "Period", Pct = 1)`, reaching its lowest point in May 2026. The orange band did widen in absolute terms, so there was more raw dispersion to exploit, but much of the extra volatility was common to the market and could only have been avoided by holding less equity. The most efficient environment for stock picking came in mid 2025, when more than 90 percent of stock risk was diversifiable.
+
+## The Strength of the Common Factor
+
+```{r q1c_pca, fig.height = 5.5, fig.cap = "Share of Constituent Risk Explained by Common Factors"}
+Pca_Roll <- Rolling_PCA_Calc(SWIX_Cons, Month_Ends, Lookback = 126, Top_N = 40, Ret_Cap = 0.5) # the share of variance explained by the first three components at every month end
+Pca_Facts <- Pca_Roll %>% mutate(Period = ifelse(date < lubridate::ymd(20260101), "Before 2026", "2026")) %>% group_by(Period) %>% summarise(PC1 = mean(PC1), Top3 = mean(PC1 + PC2 + PC3), .groups = "drop") # average shares before and during 2026
+Pca_2026 <- Pca_Roll %>% filter(date >= lubridate::ymd(20260101)) # the 2026 months
+Pca_Corr <- cor(Pca_Roll$PC1, Corr$Implied_Corr[match(Pca_Roll$date, Corr$date)], use = "complete.obs") # how closely the first component's share tracks the implied correlation
+Plot_Rolling_PCA(Pca_Roll, # the stacked shares of the first three components
+                 Title = "Share of Constituent Risk Explained by Common Factors", # the plot title
+                 Subtitle = "The market factor explains about 30 percent of stock risk, and its share jumped within 2026", # the main message
+                 Caption = "Note:\nPrincipal components of standardised daily returns of the 40 largest Capped SWIX constituents over trailing six month windows. 2026 shaded. Calculation own.") # the note under the plot
+```
+
+Figure \ref{fig:q1c_pca} shows the share of constituent variance explained by the first three principal components. The first component explained `r Fact_Pull(Pca_Facts, "Before 2026", "PC1", Key_Col = "Period", Pct = 0.1)` on average before 2026 and `r Fact_Pull(Pca_Facts, "2026", "PC1", Key_Col = "Period", Pct = 0.1)` in 2026, but rose sharply within the year, from `r Pct_Text(min(Pca_2026$PC1), 0.1)` to `r Pct_Text(max(Pca_2026$PC1), 0.1)`, in line with the correlation result.
+
+## Opportunity and Active Manager Outcomes
+
+A wider opportunity set should allow skilled managers to separate from the pack, which is the claim tested in the Practical 2 bonus. The figure relates the trailing 12 month average of weighted dispersion to the spread of 12 month excess returns across South African active managers, and colours each month by the share of managers who beat the Capped SWIX over that year. The points are connected in time order.
+
+```{r q1c_managers, fig.cap = "Market Dispersion and the Spread of Active Manager Results"}
+Active_Managers <- read_rds("../../data/Active_Managers.rds") # monthly returns of the active manager universe
+BM_Monthly <- Idx_Daily %>% filter(Tickers == "J433") %>% mutate(YM = format(date, "%Y%m")) %>% group_by(YM) %>% summarise(BM = prod(1 + Returns) - 1) # monthly Capped SWIX returns, keyed by year and month
+Hit_Rate <- Manager_Hit_Rate(Active_Managers, BM_Monthly, NSel = 12) # share of managers beating the benchmark and the spread of their excess returns over rolling 12 months
+Opportunity <-
+    Dispersion %>%
+    mutate(YM = format(date, "%Y%m")) %>% # a year and month label
+    group_by(YM) %>% filter(date == max(date)) %>% ungroup() %>% # the dispersion reading at each month end, which covers that month
+    arrange(date) %>% # order by date before rolling
+    mutate(Disp12 = RcppRoll::roll_mean(Dispersion_W, n = 12, fill = NA, align = "right")) %>% # the average over the trailing 12 months, matching the manager window
+    select(YM, date, Disp12) %>% # keep only what is needed
+    inner_join(Hit_Rate %>% select(YM, Share_Outperform, Median_Excess, Mgr_Spread), by = "YM") # attach the manager outcomes of the same month
+Opp_Facts <- Opportunity %>% tidyr::drop_na() %>% summarise(N = n(), Cor_Spread = cor(Disp12, Mgr_Spread), Cor_Share = cor(Disp12, Share_Outperform), Cor_Median = cor(Disp12, Median_Excess)) # correlations between opportunity and outcomes, used in the text
+Plot_Alpha_Opportunity(Opportunity, # the connected scatter of opportunity against manager outcomes
+                       Title = "Market Dispersion and the Spread of Active Manager Results", # the plot title
+                       Subtitle = "Higher dispersion separates managers from one another, but does not lift the share that beat the benchmark", # the main message
+                       Caption = "Note:\nEach point is a month. Manager spread is the cross-sectional standard deviation of 12 month returns relative to the Capped SWIX. Calculation own.") # the note under the plot
+```
+
+Over the `r Opp_Facts$N` months for which both series exist, trailing dispersion has a correlation of `r sprintf("%.2f", Opp_Facts$Cor_Spread)` with the spread of manager excess returns, so managers' results diverged more when the market offered more dispersion. The opportunity is real, in the sense that portfolios that differ from the benchmark produce more different outcomes when stocks diverge. The correlation with the share of managers beating the benchmark is only `r sprintf("%.2f", Opp_Facts$Cor_Share)`, however, and the colours show that most months are red. In `r Pct_Text(mean(Opportunity$Share_Outperform[!is.na(Opportunity$Disp12)] < 0.5))` of months fewer than half of managers were ahead of the index, regardless of the level of dispersion. Higher dispersion therefore raises the stakes of active management without raising the average manager's success rate, which is what one would expect if skill is scarce and fees are a constant drag.
+
+## Manager Outcomes by Dispersion Regime
+
+```{r q1c_regimes, fig.width = 11, fig.height = 5.5, fig.cap = "Active Manager Outcomes by Dispersion Regime"}
+Regime_Facts <- Opportunity %>% tidyr::drop_na(Disp12, Share_Outperform, Mgr_Spread) %>% mutate(Q = ntile(Disp12, 5)) %>% group_by(Q) %>% summarise(Share = mean(Share_Outperform), Spread = mean(Mgr_Spread), .groups = "drop") # the averages in each dispersion quintile, used in the text
+Plot_Dispersion_Regimes(Opportunity, N_Groups = 5, # manager outcomes in each dispersion quintile
+                        Title = "Active Manager Outcomes by Dispersion Regime", # the plot title
+                        Subtitle = "Higher dispersion widens the spread of manager results, while the share beating the benchmark stays below half", # the main message
+                        Caption = "Note:\nMonths sorted into quintiles of trailing 12 month weighted dispersion. Outcomes are over the same trailing 12 months. Calculation own.") # the note under the plot
+```
+
+Figure \ref{fig:q1c_regimes} groups the months into dispersion quintiles. The spread of manager results rises from `r Pct_Text(Regime_Facts$Spread[1], 0.1)` to `r Pct_Text(Regime_Facts$Spread[5], 0.1)`, while the share beating the benchmark stays below half in every regime. Dispersion raises the stakes of active management without raising the typical manager's success rate.
+
+## Alpha Opportunity and the Global Macro Backdrop
+
+```{r q1c_macro_scatter, fig.width = 10, fig.height = 6, fig.cap = "Weighted Dispersion Against the Global Macro Backdrop"}
+Macro_Gauges <- bind_rows(Implied_Vol, Uncertainty_Indexes, Local_Cncy_Vol_Index %>% select(-Description), Gl_Cncy_Vol_Index) # every macro gauge quoted as a level
+Commod_Rets <- Commods %>% TRI_Returns_Calc(Start_Date = lubridate::ymd(20200101)) # daily commodity returns, from which monthly oil and gold volatility are measured
+Macro_Names <- c(VIX = "US implied vol (VIX)", MOVE_Index = "Bond vol (MOVE)", EPUCGLCP = "Global policy uncertainty", Oil_Brent_Vol = "Brent oil vol", Gold_Vol = "Gold vol", SAVIUSD = "Rand vol (SAVIUSD)") # readable names for the macro variables
+Macro_Monthly <- State_Monthly_Calc(Level_df = Macro_Gauges, Level_Sel = c("VIX", "MOVE_Index", "EPUCGLCP", "SAVIUSD"), Vol_df = Commod_Rets, Vol_Sel = c("Oil_Brent", "Gold")) %>% mutate(State = recode(State, !!!Macro_Names)) %>% spread(State, Value) # one row per month with every macro variable as a column
+Macro_Panel <-
+    Dispersion %>%
+    mutate(YM = format(date, "%Y%B")) %>% # the same year and month label that State_Monthly_Calc uses
+    group_by(YM) %>% filter(date == max(date)) %>% ungroup() %>% # the dispersion reading at each month end
+    left_join(Corr %>% mutate(YM = format(date, "%Y%B")) %>% select(YM, Implied_Corr), by = "YM") %>% # attach the implied correlation of the same month
+    left_join(Macro_Monthly, by = "YM") # attach the macro variables of the same month
+Plot_Macro_Scatter(Macro_Panel, Y = "Dispersion_W", X_Vars = unname(Macro_Names), Highlight_Year = 2026, # dispersion against each macro variable
+                   Title = "Weighted Dispersion Against the Global Macro Backdrop", # the plot title
+                   Subtitle = "Only US equity volatility has a clear positive link with dispersion on its own", # the main message
+                   Caption = "Note:\nMonthly values from September 2020. Orange points are 2026 months. Lines are linear fits with 95 percent confidence bands. Calculation own.") # the note under the plot
+```
+
+Figure \ref{fig:q1c_macro_scatter} relates weighted dispersion to six macro variables one at a time. Only US equity volatility shows a clear positive link on its own, and the 2026 months sit across the range of every variable.
+
+## Multiple Regression on the Macro Variables
+
+Because the macro variables are themselves related, a multiple regression is needed to isolate the effect of each. Both dispersion and implied correlation are regressed on the six standardised variables, so that each coefficient is the effect of a one standard deviation move. Newey-West standard errors are used because the rolling windows overlap from month to month, which makes the residuals autocorrelated and would otherwise overstate significance. The largest correlation between any two regressors is `r sprintf("%.2f", max(abs(cor(Macro_Panel %>% select(all_of(unname(Macro_Names))), use = "complete.obs")[upper.tri(diag(6))])))`, so multicollinearity is modest.
+
+```{r q1c_macro_regression, fig.cap = "What Moves Alpha Opportunity in the Local Market"}
+Macro_Coefs <- bind_rows(Macro_Regression(Macro_Panel, Y = "Dispersion_W", X_Vars = unname(Macro_Names), Lag = 3, Label = "Weighted dispersion"), # dispersion on the standardised macro variables
+                         Macro_Regression(Macro_Panel, Y = "Implied_Corr", X_Vars = unname(Macro_Names), Lag = 3, Label = "Implied correlation")) # implied correlation on the same variables
+Coef_Facts <- Macro_Coefs %>% mutate(Key = paste(Model, Term, sep = " | ")) # a key for the inline numbers in the text
+Plot_Macro_Coefs(Macro_Coefs, # the coefficients of both models side by side
+                 Title = "What Moves Alpha Opportunity in the Local Market", # the plot title
+                 Subtitle = "Oil and bond market volatility make local stocks move together, while US equity volatility widens dispersion", # the main message
+                 Caption = "Note:\nStandardised OLS coefficients with 95 percent intervals from Newey-West standard errors with three lags. Monthly data from September 2020. Calculation own.") # the note under the plot
+```
+
+The regressions separate the macro drivers more clearly than the scatter plots. Implied correlation is the better explained of the two, with an R-squared of `r sprintf("%.2f", unique(Macro_Coefs$R2[Macro_Coefs$Model == "Implied correlation"]))`, and its significant drivers are oil volatility and bond market volatility. A one standard deviation rise in oil volatility raises the implied correlation by `r Fact_Pull(Coef_Facts, "Implied correlation | Brent oil vol", "Estimate", Key_Col = "Key")`, and the same move in the MOVE index raises it by `r Fact_Pull(Coef_Facts, "Implied correlation | Bond vol (MOVE)", "Estimate", Key_Col = "Key")`. Both are shocks that hit the whole local market at once, through commodity prices and the global cost of capital, so they push local stocks to move as a block and shrink the opportunity to stand out. The same two variables reduce dispersion once the VIX is held constant, while the VIX itself is the one significant positive driver of dispersion, adding `r sprintf("%.2f", 100 * Coef_Facts$Estimate[Coef_Facts$Key == "Weighted dispersion | US implied vol (VIX)"])` percentage points to dispersion per standard deviation. The dispersion model explains only `r Pct_Text(unique(Macro_Coefs$R2[Macro_Coefs$Model == "Weighted dispersion"]))` of the variation, however, which is consistent with dispersion being dominated by stock-specific events such as the Naspers buyback and the gold rally. Global policy uncertainty is insignificant in both models, which matches the finding in Part A that news-based uncertainty matters only once it reaches a market price.
+
+## Summary of Part C
+
+The alpha opportunity in the local market since 2020 has been episodic, with no clear trend. Weighted dispersion has hovered around 8 to 9 percent, punctuated by sharp spikes when heavyweight stocks made large idiosyncratic moves, and the most favourable environment for stock pickers came in mid 2025, when correlations fell below 0.1 and more than 90 percent of stock risk was diversifiable. In 2026 the picture deteriorated in a subtle way. Stock volatility rose, but the largest stocks moved together more closely than at any point in the sample, so a larger share of the extra risk was common to the market and could not be avoided by stock selection.
+
+The macro evidence explains why. Oil and bond market volatility, the channels through which offshore shocks reach the local market, raise correlations and compress the opportunity set, while broader US equity volatility tends to widen dispersion. For the team, this links the three parts of the question. The commodity and rate shocks that drove local volatility in Part A are the same forces that reduce the room for active management, and SafeCore's concentration in gold miners in Part B left it exposed to exactly the kind of common, correlated risk that dominated 2026. A risk ballast built from genuinely diversifying holdings would therefore have helped on both fronts, by lowering volatility and by preserving the fund's ability to differ from the market when correlations rise.
 
 \FloatBarrier
 

@@ -48,6 +48,10 @@ Disp <- Market_Dispersion_Calc(Monthly_Constituents %>% filter(Fund == "CappedSW
 DA <- Dispersion_Alpha_Calc(Univ, Disp, Fund_Label = "ABC Fund", NSel = 12) # trailing dispersion against trailing alpha
 DA_Terc <- DA %>% group_by(Tercile) %>% summarise(Fund = mean(Fund_Alpha), Peer = mean(Peer_Alpha), Hit = mean(Fund_Alpha > Peer_Alpha)) # averages by dispersion regime
 NW_Fund <- NW_Slope_Test(DA, "Fund_Alpha", "Disp_Roll", Lag = 12) # does the fund's alpha rise with dispersion
+Q3_TE_IR <- Roll_TE_IR_Calc(Univ, NSel = 36) # rolling three year tracking error and information ratio of every fund
+TI_Facts <- Q3_TE_IR %>% group_by(date) %>% summarise(Fund_TE = TE[Group == "ABC Fund"][1], Peer_TE = median(TE[Group == "Peer"]), Fund_IR = IR[Group == "ABC Fund"][1], Peer_IR = median(IR[Group == "Peer"]), .groups = "drop") %>% filter(!is.na(Fund_TE)) # the fund and the median peer in every month
+Q3_Pca <- Peer_PCA_Calc(Univ) # each fund's correlation with the first two principal components of peer returns
+Pca_Fund <- Q3_Pca %>% mutate(Rank1 = rank(PC1)) %>% filter(Name == "ABC Fund") # the fund's position and its rank on the first component
 Monthly_Test <- Univ %>% filter(Group == "ABC Fund", !is.na(BM)) %>% inner_join(Disp %>% select(YM, Disp), by = "YM") %>% summarise(Cor = cor(Returns - BM, Disp)) # the same question month by month, using raw excess returns
 ```
 
@@ -107,6 +111,30 @@ Plot_Return_Drivers(Drivers, Fund_Label = "ABC Fund", Title = "What Drives Each 
 
 ::: notes
 Each thin bar is one fund, split into three parts. The dark blue part moves with the market, the light blue part moves with what other managers are doing, and the orange part is unique to the fund. For the typical peer, `r Pct_Text(Drv_Peer$Market)` of the ups and downs come from the market. For ABC Fund the figure is `r Pct_Text(Drv_Fund$Market)`, and `r Pct_Text(Drv_Fund$Unique)` is its own, more than twice the typical peer's `r Pct_Text(Drv_Peer$Unique)`. One caution for the talk is that ABC Fund's non-market bets overlap with the industry's common bets slightly more than most, at `r Pct_Text(Drv_Fund$Shared)` against `r Pct_Text(Drv_Peer$Shared)`. The fund's difference therefore comes mainly from taking less market risk, and it is safer to describe it as independent of the market than as contrarian to other managers.
+:::
+
+## ABC Fund Takes Twice the Typical Active Risk
+
+ABC Fund's tracking error averaged `r Pct_Text(mean(TI_Facts$Fund_TE), 0.1)` against `r Pct_Text(mean(TI_Facts$Peer_TE), 0.1)` for the typical peer, and its information ratio beat the typical peer's in `r Pct_Text(mean(TI_Facts$Fund_IR > TI_Facts$Peer_IR))` of months.
+
+```{r te_ir}
+Plot_Roll_TE_IR(Q3_TE_IR, Fund_Label = "ABC Fund", Title = "Rolling 3 Year Tracking Error and Information Ratio", Subtitle = NULL, Caption = "Note:\nRolling 36 month measures against the Capped SWIX. Bands span the middle half of peers. Calculation own.") # activeness and the reward for it
+```
+
+::: notes
+Tracking error measures how far a fund's returns stray from the benchmark, so it is a gauge of how active the fund is. The information ratio divides the return above the benchmark by that tracking error, so it shows whether the activeness has been rewarded. ABC Fund has consistently taken about twice the active risk of the typical peer, and its information ratio was above the typical peer's in most months, peaking at `r sprintf("%.2f", max(TI_Facts$Fund_IR))` in `r format(TI_Facts$date[which.max(TI_Facts$Fund_IR)], "%B %Y")`. In the latest windows both ABC Fund and the typical peer have negative information ratios, at `r sprintf("%.2f", dplyr::last(TI_Facts$Fund_IR))` and `r sprintf("%.2f", dplyr::last(TI_Facts$Peer_IR))`, because the strong market of 2025 left most active managers behind. The honest message is that the fund is genuinely active and has been paid for it over most of its history.
+:::
+
+## ABC Fund Stands Apart From the Peer Group
+
+One common factor explains `r Pct_Text(Q3_Pca$Share1[1])` of peer returns, and ABC Fund is among the funds that follow it least.
+
+```{r peer_pca}
+Plot_Peer_PCA(Q3_Pca, Fund_Label = "ABC Fund", Title = "A Map of the Peer Group from Principal Components", Subtitle = NULL, Caption = "Note:\nCorrelations of each fund with the first two principal components of monthly returns, 2015 to 2025, for funds with a complete history. Calculation own.") # the variable map of the peer group
+```
+
+::: notes
+This map is built only from the funds' own returns, with no reference to the benchmark. Each dot is a fund, placed by how closely it follows the two strongest common patterns in the peer group. The first pattern is essentially the market, and it explains `r Pct_Text(Q3_Pca$Share1[1])` of the ups and downs of the `r Q3_Pca$N[1]` funds with a full history, which is why most dots are pressed against the right edge of the circle. ABC Fund's correlation with that pattern is `r sprintf("%.2f", Pca_Fund$PC1)`, against `r sprintf("%.2f", median(Q3_Pca$PC1))` for the typical fund, the `r scales::ordinal(Pca_Fund$Rank1)` lowest of the group. It confirms the earlier slides from a completely different angle.
 :::
 
 ## Top Half of Peers in `r sum(Cal$Pct >= 0.5)` of `r nrow(Cal)` Calendar Years
