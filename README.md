@@ -18,8 +18,8 @@ gc() # garbage collection, which hands memory back to the operating system after
 ```
 
     ##          used (Mb) gc trigger (Mb) limit (Mb) max used (Mb)
-    ## Ncells 502242 26.9    1077057 57.6         NA   715840 38.3
-    ## Vcells 981081  7.5    8388608 64.0      16384  2011380 15.4
+    ## Ncells 502318 26.9    1077274 57.6         NA   715840 38.3
+    ## Vcells 981827  7.5    8388608 64.0      16384  2011380 15.4
 
 ``` r
 library(tidyverse) # load the tidyverse for data wrangling and plotting
@@ -49,12 +49,33 @@ into the `data` folder.
 ``` r
 if(!require("pacman")) install.packages("pacman") # make sure the package loader itself is installed
 pacman::p_load(tidyverse, lubridate, xts, tbl2xts, PerformanceAnalytics, RcppRoll, fmxdat, rmsfuns, glue, gt, patchwork) # load the core packages that every question relies on, with xts attached because fmxdat::Safe_TE calls its functions directly
-Needed <- c("quadprog", "Rsolnp", "Matrix", "ggdist", "treemapify", "geomtextpath", "circlize", "ggrepel", "ggridges", "sandwich", "lmtest", "rugarch", "rmgarch") # packages that the functions only ever call with ::, so they are installed but not attached
+Needed <- c("quadprog", "Rsolnp", "Matrix", "ggdist", "treemapify", "geomtextpath", "circlize", "ggrepel", "ggridges", "sandwich", "lmtest", "rugarch", "rmgarch", "gganimate", "gifski", "callr") # packages that the functions only ever call with ::, so they are installed but not attached, including gganimate and its gif renderer for the two animations
 Missing <- setdiff(Needed, rownames(installed.packages())) # the ones not yet installed on this machine
 if(length(Missing) > 0) install.packages(Missing) # install only those
 options(dplyr.summarise.inform = F) # stop summarise from printing a grouping message every time it runs
 options(scipen = 999) # show numbers in full instead of scientific notation
 ```
+
+# The Local Market in Motion
+
+Before the questions, the animation below sets the scene. It traces the
+growth of one rand invested in the Capped SWIX and the three local size
+indexes from January 2015, drawing each line month by month. The race
+shows the themes that recur through this repository, namely the Covid
+crash of 2020, the long stretch in which the indexes moved together, and
+the separation of the size indexes in the rally that followed.
+
+``` r
+dir.create("README_files/animations", recursive = TRUE, showWarnings = FALSE) # a folder for the animations, next to the README's other figures
+Race_Monthly <- read_rds("data/Index_Returns_Daily.rds") %>% filter(Tickers %in% c("J433", "J200", "J201", "J202")) %>% mutate(Name = recode(Name, "Top 40" = "Large Caps", MidCaps = "Mid Caps", SmallCaps = "Small Caps")) %>% select(date, Name, Returns) %>% Monthly_Returns_Calc() # monthly returns of the benchmark and the size indexes
+Animate_In_Fresh_R("Animate_Index_Race", # render the racing growth chart in a separate R session, where gganimate runs freely
+                   Args = list(Monthly = Race_Monthly, File = "README_files/animations/index_race.gif", # the data and where the gif is saved
+                               Cols = c(`Capped SWIX` = "black", `Large Caps` = "#B2182B", `Mid Caps` = "darkorange", `Small Caps` = "#4C78A8"), # one colour per index, matching question 2
+                               Title = "The Local Equity Market Since 2015", Subtitle = "Growth of one rand invested in January 2015,", # the title and the start of the subtitle, which ends with the current month
+                               Caption = "Note:\nMonthly total returns of the published indexes. Calculation own.")) # the note under the animation
+```
+
+![](README_files/animations/index_race.gif)
 
 # Question 1, Exploring Risk and Uncertainty
 
@@ -2147,3 +2168,23 @@ only a small share of its risk, so the fund remains an equity-driven
 portfolio, and offshore returns are measured in dollars, which means a
 live fund would also carry rand exposure that this backtest does not
 capture.
+
+# Closing Animation, the Frontier Through Time
+
+The final animation returns to Question 4 and plays the efficient
+frontier forward through every quarterly rebalance date from December
+2019. The dashed frontier shows what a long-only investor could reach,
+the solid frontier what the mandate allows, and the diamonds show where
+the four portfolio rules sat on each date. The frontier rises and shifts
+as new assets qualify under the five year rule and as the estimation
+window lengthens, while the gap between the two frontiers, the cost of
+the mandate, persists throughout.
+
+``` r
+Animate_In_Fresh_R("Animate_Frontier_Path", # render the moving frontier in a separate R session, where gganimate runs freely
+                   Args = list(Fr = Q4_Frontiers, W = Q4_Weights, Pal = Q4_Pal, File = "README_files/animations/frontier_path.gif", # the frontiers, the portfolios and where the gif is saved
+                               Title = "The Efficient Frontier Through Time", Subtitle = "Quarterly rebalance of", # the title and the start of the subtitle, which ends with the current date
+                               Caption = "Note:\nExpected values from the shrunk estimates on each rebalance date. Diamonds mark the four portfolio rules. Calculation own.")) # the note under the animation
+```
+
+![](README_files/animations/frontier_path.gif)

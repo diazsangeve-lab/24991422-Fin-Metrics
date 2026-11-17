@@ -18,7 +18,7 @@ Animate_Frontier_Path <- function(Fr, W, Pal, File, Title = "The Efficient Front
         fmxdat::theme_fmx(title.size = fmxdat::ggpts(34), subtitle.size = fmxdat::ggpts(28), caption.size = fmxdat::ggpts(22), CustomCaption = T) + # the clean course theme with readable text sizes
         theme(legend.position = "bottom", legend.box = "vertical") + # the legends below the plot
         labs(x = "Expected annualised volatility", y = "Expected annualised return", fill = "", linetype = "", title = Title, subtitle = paste(Subtitle, "{closest_state}"), caption = Caption) + # titles, with the current rebalance date shown in the subtitle
-        gganimate::transition_states(State, transition_length = 2, state_length = 1) + # move smoothly from one rebalance date to the next
+        gganimate::transition_states(State, transition_length = 2, state_length = 1, wrap = FALSE) + # move smoothly from one rebalance date to the next, ending on the latest date
         gganimate::ease_aes("cubic-in-out") # ease the movement in and out of each date
 
     A <- gganimate::animate(g, nframes = length(Order) * 6, fps = Fps, width = Width, height = Height, res = 110, end_pause = 15, renderer = gganimate::gifski_renderer()) # render the frames into a gif, six frames per rebalance date
