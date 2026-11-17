@@ -18,8 +18,8 @@ gc() # garbage collection, which hands memory back to the operating system after
 ```
 
     ##          used (Mb) gc trigger (Mb) limit (Mb) max used (Mb)
-    ## Ncells 496939 26.6    1061937 56.8         NA   715777 38.3
-    ## Vcells 932499  7.2    8388608 64.0      16384  2011345 15.4
+    ## Ncells 497116 26.6    1062442 56.8         NA   715777 38.3
+    ## Vcells 935289  7.2    8388608 64.0      16384  2011345 15.4
 
 ``` r
 library(tidyverse) # load the tidyverse for data wrangling and plotting
@@ -74,11 +74,15 @@ Factor_Scores <- read_rds("data/Factor_Scores.rds") # third party factor scores 
 
 This part establishes whether volatility on the local exchange has
 increased and whether that increase mirrors the global experience. The
-analysis proceeds in four steps. It first compares annualised volatility
-across sub-periods, then traces the timing of volatility with a rolling
-window, then separates the volatility signal from noise using GARCH
-models, and finally stratifies the sample by global conditions to
-identify which external forces local volatility responds to.
+analysis moves from simple measures to model-based ones. It first
+compares annualised volatility across sub-periods and traces its timing
+with a rolling window and a monthly calendar. It then separates the
+volatility signal from noise using GARCH models, examines how strongly
+volatility responds to bad news, and uses a DCC model to test whether
+the local market has become more tightly linked to global markets.
+Finally, it stratifies the sample by global conditions to identify which
+external forces local volatility responds to, and which local segment
+holds up best when they strike.
 
 Three choices shape the analysis. The Capped SWIX (J433) serves as the
 local yardstick, since it is the fund’s benchmark in Part B and its
@@ -164,6 +168,39 @@ July, while the global index peaked at only 14.7 percent against its
 average of 12.6 percent. The evidence points to a volatility episode
 rather than a lasting shift to a higher level of local volatility.
 
+### A Calendar View of Volatility
+
+The rolling measure shows when volatility rose, but not how unusual each
+month was relative to the same months in other years. The calendar below
+colours every month by its annualised realised volatility and places the
+three indexes side by side, so that local, emerging market and global
+episodes can be matched directly. The colour scale is capped at 40
+percent so that the Covid months do not wash out the rest of the sample.
+
+``` r
+Monthly_Vol <- Monthly_Vol_Calc(All_Rets %>% filter(Name %in% c("Capped SWIX", "MSCI_EM", "MSCI_ACWI"))) # realised volatility of each index in every calendar month
+Plot_Vol_Heatmap(Monthly_Vol %>% mutate(Name = factor(Name, levels = c("Capped SWIX", "MSCI_EM", "MSCI_ACWI"))), # order the panels as local, emerging and then global
+                 Cap = 0.4, # the top of the colour scale
+                 Title = "Monthly Volatility Calendar", # the plot title
+                 Subtitle = "The 2026 episode is visible locally and in emerging markets, while the global calendar stays pale", # the main message
+                 Caption = "Note:\nAnnualised standard deviation of daily returns within each month. Colours capped at 40 percent. Calculation own.") # the note under the plot
+```
+
+![](README_files/figure-markdown_github/q1a_calendar-1.png)
+
+The calendar makes the timing of the 2026 episode precise. March 2026
+was the fourth most volatile month on the local exchange since 2015, at
+31.9 percent, behind only March and April 2020 and April 2025. The
+emerging market calendar shows a longer episode, with June and July 2026
+at 32.3 and 34.9 percent, the latter second only to March 2020. The
+global calendar stays pale throughout 2026, with no month above 15.5
+percent. April 2025, by contrast, is dark in all three panels, which
+indicates that the US tariff announcements were a genuinely global shock
+in a way that the 2026 episode was not. The local episode was also
+shorter than its emerging market counterpart, since local volatility had
+already fallen to 12.6 percent in July 2026, the month in which emerging
+market volatility peaked.
+
 ### Conditional Volatility from GARCH Models
 
 Realised volatility has a mechanical weakness, since a single large
@@ -190,7 +227,7 @@ Chosen GARCH model per index
 
 ``` r
 Plot_Garch_Sigma(Garch_Sigma, # plot the three conditional volatility series together
-                 Title = "Conditional Volatility: Local vs Global", # the plot title
+                 Title = "Conditional Volatility of Local and Global Equities", # the plot title
                  Subtitle = "From late 2025 local volatility rises with emerging markets, while global volatility remains subdued", # the main message
                  Caption = "Note:\nBest fitting GARCH(1,1) model per index by AIC, smoothed with a 21 day average. Shaded area is 2026. Calculation own.") # the note under the plot
 ```
@@ -211,6 +248,121 @@ percent over the full sample, while global conditional volatility
 averaged 11.6 percent, slightly below its own norm of 12.2 percent. With
 the noise removed, the GARCH estimates confirm the pattern found in
 realised volatility.
+
+### The Asymmetric Response to Bad News
+
+The GARCH results establish that volatility responds asymmetrically to
+shocks, but not how strongly each market does so. The news impact curve
+from the univariate volatility practical answers this by tracing the
+volatility implied for today across a range of shocks to yesterday’s
+return, with the lagged variance held at its long run level. The curves
+below use the model selected for each index in the previous step and a
+common grid of shocks between minus and plus six percent.
+
+``` r
+Best_Models <- Garch_Sigma %>% distinct(Name, Model) # the model chosen by AIC for each index in the previous step
+NIC_df <- Best_Models %>% pmap_df(~Garch_NIC_Calc(All_Rets, Series = ..1, Model = ..2, Shock_Range = 0.06)) # trace each index's news impact curve over shocks of minus to plus six percent
+NIC_df %>%
+    group_by(Name) %>% # one row per index
+    summarise(`After a 4% fall` = Vol[which.min(abs(Shock + 0.04))], # implied volatility after an unexpected fall of four percent
+              `No shock` = Vol[which.min(abs(Shock))], # implied volatility when yesterday held no surprise
+              `After a 4% rise` = Vol[which.min(abs(Shock - 0.04))]) %>% # implied volatility after an unexpected rise of four percent
+    mutate(Asymmetry = round(`After a 4% fall` / `After a 4% rise`, 2)) %>% # how many times larger the response to bad news is than to good news
+    mutate(across(c(`After a 4% fall`, `No shock`, `After a 4% rise`), ~scales::percent(., accuracy = 0.1))) %>% # show the volatilities as percentages
+    knitr::kable(caption = "Implied annualised volatility after a shock of a given size") # print as a table
+```
+
+| Name                 | After a 4% fall | No shock | After a 4% rise | Asymmetry |
+|:--------------------|:---------------|:---------|:---------------|----------:|
+| Capped SWIX (eGARCH) | 23.9%           | 14.6%    | 15.4%           |      1.55 |
+| MSCI_ACWI (eGARCH)   | 26.4%           | 9.6%     | 9.2%            |      2.87 |
+| MSCI_EM (gjrGARCH)   | 32.1%           | 14.8%    | 16.6%           |      1.93 |
+
+Implied annualised volatility after a shock of a given size
+
+``` r
+Plot_NIC(NIC_df, # plot the three news impact curves together
+         Title = "News Impact Curves for Local, Global and Emerging Markets", # the plot title
+         Subtitle = "Local volatility starts higher but reacts less sharply to bad news than global or emerging markets", # the main message
+         Caption = "Note:\nCurves from the best fitting GARCH(1,1) model per index, with lagged variance at its long run level. Calculation own.") # the note under the plot
+```
+
+![](README_files/figure-markdown_github/q1a_nic-1.png)
+
+All three curves rise far more to the left of zero than to the right,
+which confirms the leverage effect described in the theory slides. The
+local curve is, however, notably flatter. After an unexpected fall of 4
+percent, implied local volatility rises to 23.9 percent, against 26.4
+percent for the global index and 32.1 percent for emerging markets.
+Measured as the response to a 4 percent fall relative to a 4 percent
+rise, the asymmetry is 1.55 locally against 2.87 globally and 1.93 for
+emerging markets. The local market therefore starts from a higher base
+level of volatility, at 14.6 percent against 9.6 percent globally when
+yesterday held no surprise, but reacts less violently to bad news. One
+plausible explanation is the large weight of rand hedge shares in the
+local index, whose rand value tends to be supported when the currency
+weakens during a sell-off, although this reading would need to be tested
+directly.
+
+### Co-movement with Global Markets
+
+Volatility can rise relative to global markets in two different ways.
+The local market may become more tightly linked to them, so that global
+shocks pass through more fully, or it may simply be exposed to larger
+shocks in the markets it already moves with. The two carry different
+implications for a risk ballast, so the time-varying correlation between
+the Capped SWIX and the two MSCI indexes is estimated with the DCC model
+from the multivariate volatility practical. Weekly log returns are used
+because the Johannesburg and New York markets close at different times,
+which biases daily correlations downwards, and because log returns can
+be summed across the days of a week.
+
+``` r
+Weekly_Rets <- Weekly_Returns_Calc(All_Rets %>% filter(Name %in% c("Capped SWIX", "MSCI_ACWI", "MSCI_EM"))) # weekly log returns, which sidestep the different closing times of Johannesburg and New York
+DCC_df <- DCC_Cor_Calc(Weekly_Rets, Base = "Capped SWIX") # time-varying correlation of the local index with the global and emerging market indexes
+DCC_df %>%
+    group_by(Pair) %>% # one row per pair
+    summarise(`Full sample` = mean(Rho), # the average correlation over the whole sample
+              `2015-2019` = mean(Rho[date < lubridate::ymd(20200101)]), # the average before Covid
+              `2021-2024` = mean(Rho[date >= lubridate::ymd(20210101) & date < lubridate::ymd(20250101)]), # the average over the recovery
+              `2026 YTD` = mean(Rho[date >= lubridate::ymd(20260101)]), # the average in the year the seminar was about
+              Peak = max(Rho), # the highest correlation in the sample
+              Latest = dplyr::last(Rho)) %>% # the most recent correlation
+    mutate(across(-Pair, ~round(., 2))) %>% # round for easy reading
+    knitr::kable(caption = "DCC correlations of the Capped SWIX with global and emerging market equities") # print as a table
+```
+
+| Pair                     | Full sample | 2015-2019 | 2021-2024 | 2026 YTD | Peak | Latest |
+|:---------------------|----------:|---------:|---------:|--------:|-----:|------:|
+| Capped SWIX vs MSCI_ACWI |        0.68 |      0.66 |      0.68 |     0.68 | 0.78 |   0.66 |
+| Capped SWIX vs MSCI_EM   |        0.69 |      0.68 |      0.69 |     0.67 | 0.76 |   0.62 |
+
+DCC correlations of the Capped SWIX with global and emerging market
+equities
+
+``` r
+Plot_DCC(DCC_df, # plot both correlation series
+         Title = "Dynamic Conditional Correlations with the Capped SWIX", # the plot title
+         Subtitle = "The link with offshore markets did not tighten in 2026, and the link with emerging markets weakened", # the main message
+         Caption = glue::glue("Note:\nDCC(1,1) on weekly log returns with GJR-GARCH univariate models. DCC a = {round(dplyr::first(DCC_df$dcc_a), 3)} and b = {round(dplyr::first(DCC_df$dcc_b), 3)}. Dashed lines show averages. Calculation own.")) # the note under the plot, including the fitted parameters
+```
+
+![](README_files/figure-markdown_github/q1a_dcc-1.png)
+
+The correlations are remarkably stable. The local index has averaged a
+correlation of 0.68 with the global index and 0.69 with emerging
+markets, and the DCC parameters of a = 0.013 and b = 0.934 imply that
+correlations adjust only slowly to new shocks. The one clear break is
+the Covid crash, when the correlation with the global index rose to 0.78
+in March 2020. In 2026 the correlation with the global index averaged
+0.68, unchanged from 2021 to 2024, while the correlation with emerging
+markets fell from 0.69 to 0.67 and reached 0.62 in August 2026, its
+lowest reading since 2016. The rise in local volatility therefore did
+not come from a tighter link with offshore markets. It came instead from
+larger shocks to the emerging market and commodity complex to which the
+local market is exposed, and the weakening correlation in the second
+half of 2026 matches the calendar, in which emerging market volatility
+kept rising after local volatility had settled.
 
 ### Volatility Across Global Regimes
 
@@ -250,18 +402,61 @@ reached its highest annual average since 2015 in 2025, at 394 against
 only once it is transmitted through a market channel, such as oil prices
 or emerging market risk appetite.
 
+### Volatility Across Local Size Segments
+
+The final step turns from the causes of local volatility to the defences
+against it. The stratification is repeated for the Top 40, the Capped
+SWIX, mid caps and small caps, and the heatmap reports each index’s
+annualised volatility in the high and low months of every state
+variable, with the ratio to its own full sample volatility in brackets.
+This shows which segment of the local market offers the most natural
+ballast when global stress arrives.
+
+``` r
+Plot_Strat_Heatmap(Vol_Strat %>% mutate(Name = factor(Name, levels = c("Top 40", "Capped SWIX", "MidCaps", "SmallCaps"))), # order the indexes from largest to smallest companies
+                   Title = "Stratified Volatility Across Local Size Segments", # the plot title
+                   Subtitle = "Small caps remain the calmest segment in every regime, although their volatility rises most in proportion", # the main message
+                   Caption = "Note:\nAnnualised volatility in the top and bottom quintile months of each state variable, with the ratio to full sample volatility in brackets. Calculation own.") # the note under the plot
+```
+
+![](README_files/figure-markdown_github/q1a_size_heatmap-1.png)
+
+Small caps are the calmest segment in every regime. In months of high
+VIX, small caps ran at 22.6 percent against 27.1 percent for the Top 40,
+and in months of high oil volatility at 20.6 percent against 25.6
+percent. Their ratios are the highest in the table, reaching 1.61 times
+normal, so their volatility rises proportionally more in stress, yet the
+absolute gap of between 4 and 6 percentage points to the Top 40 survives
+into the worst regimes, much like the gap of 4.7 points over the full
+sample. Two caveats apply to this result. Small caps trade less
+frequently, and stale prices tend to understate measured volatility, so
+part of their apparent calm may reflect illiquidity rather than genuine
+stability. Lower volatility also says nothing about the depth of
+drawdowns or the cost of trading these shares in a crisis. The Top 40,
+by contrast, is the most volatile segment in both the emerging market
+and VIX regimes, at 27.6 and 27.1 percent, which is consistent with its
+heavy weight in globally exposed resource and rand hedge shares.
+
 ### Conclusion to Part A
 
-Local volatility has increased, subject to two qualifications. The
-increase took the form of an episode, peaking in April 2026 and
-normalising by September, rather than a permanent rise in the level of
-volatility. It also did not mirror the global experience, since
-developed market volatility remained below its average over the same
-months, and instead followed emerging markets and the oil market. For a
-team considering a risk ballast in a local fund, the relevant threat is
-therefore a commodity and emerging market shock. A ballast calibrated
-only to developed market stress would have missed the 2026 episode,
-since global volatility stayed below its average throughout.
+Local volatility has increased, subject to three qualifications. The
+increase took the form of an episode, peaking in March and April 2026
+and subsiding by the third quarter, rather than a permanent rise in the
+level of volatility. It did not mirror the global experience, since
+developed market volatility stayed below its average throughout 2026,
+and instead followed emerging markets and the oil market. It also did
+not reflect a tighter link with offshore markets, as the correlation
+with global equities was unchanged in 2026 and the correlation with
+emerging markets fell. The local market reacts less sharply to bad news
+than global markets do, which suggests a degree of built-in resilience.
+
+For a team considering a risk ballast in a local fund, the relevant
+threat is therefore a commodity and emerging market shock rather than a
+developed market sell-off, and a ballast calibrated only to developed
+market stress would have missed the 2026 episode. Within the local
+market, small caps offer the most natural ballast in absolute terms,
+subject to the liquidity caveat noted above. Part B examines whether
+SafeCore already holds such a ballast.
 
 ## Part B
 

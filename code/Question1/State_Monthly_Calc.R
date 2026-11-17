@@ -8,8 +8,7 @@ State_Monthly_Calc <- function(Level_df, Level_Sel, Vol_df = NULL, Vol_Sel = NUL
         filter(Name %in% Level_Sel) %>% # keep only the chosen gauges
         mutate(YM = format(date, "%Y%B")) %>% # add a year and month label
         group_by(State = Name, YM) %>% # one number per gauge per month
-        summarise(Value = mean(TRI, na.rm = T)) %>% # the average level of the gauge in that month
-        ungroup() # remove the grouping again
+        summarise(Value = mean(TRI, na.rm = T), .groups = "drop") # the average level of the gauge in that month
 
     if( is.null(Vol_df) ) return(Levels) # if no volatility based states were asked for, the levels are the answer
 
@@ -18,8 +17,7 @@ State_Monthly_Calc <- function(Level_df, Level_Sel, Vol_df = NULL, Vol_Sel = NUL
         filter(Name %in% Vol_Sel) %>% # keep only the chosen series
         mutate(YM = format(date, "%Y%B")) %>% # add a year and month label
         group_by(State = paste0(Name, "_Vol"), YM) %>% # one number per series per month, with a label that says it is a volatility
-        summarise(Value = sd(Returns, na.rm = T) * sqrt(Ann)) %>% # the realised volatility of the series inside that month
-        ungroup() # remove the grouping again
+        summarise(Value = sd(Returns, na.rm = T) * sqrt(Ann), .groups = "drop") # the realised volatility of the series inside that month
 
     bind_rows(Levels, Vols) # stack the two kinds of state variable into one tidy data frame
 
