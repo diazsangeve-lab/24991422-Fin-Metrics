@@ -39,7 +39,7 @@ The exam data was then downloaded from the course website and unzipped into the 
 
 ```{r packages}
 if(!require("pacman")) install.packages("pacman") # make sure the package loader itself is installed
-pacman::p_load(tidyverse, lubridate, tbl2xts, PerformanceAnalytics, RcppRoll, fmxdat, rmsfuns, glue, gt) # load the core packages that every question relies on
+pacman::p_load(tidyverse, lubridate, xts, tbl2xts, PerformanceAnalytics, RcppRoll, fmxdat, rmsfuns, glue, gt) # load the core packages that every question relies on, with xts attached because fmxdat::Safe_TE calls its functions directly
 options(dplyr.summarise.inform = F) # stop summarise from printing a grouping message every time it runs
 options(scipen = 999) # show numbers in full instead of scientific notation
 ```
@@ -57,6 +57,8 @@ Gl_Cncy_Vol_Index <- read_rds("data/Global_Currency_Vol_Index.rds") # the JP Mor
 Commods <- read_rds("data/Commodities.rds") # total return indexes for the Bloomberg commodity index, gold and Brent oil
 SafeCore <- read_rds("data/SafeCore.rds") # monthly holdings and weights of the SafeCore fund
 Factor_Scores <- read_rds("data/Factor_Scores.rds") # third party factor scores per stock, where a lower value means a lower exposure
+Monthly_Constituents <- read_rds("data/Monthly_Index_Constituents.rds") # monthly constituents and weights of the Capped SWIX and the size indexes, used to rebuild the benchmark
+STeFI <- read_rds("data/STeFI_Index.rds") # daily returns of the local cash index, used as the risk free rate
 ```
 
 ## Part A, Local Volatility in a Global Context
@@ -215,7 +217,232 @@ Local volatility has increased, subject to three qualifications. The increase to
 
 For a team considering a risk ballast in a local fund, the relevant threat is therefore a commodity and emerging market shock rather than a developed market sell-off, and a ballast calibrated only to developed market stress would have missed the 2026 episode. Within the local market, small caps offer the most natural ballast in absolute terms, subject to the liquidity caveat noted above. Part B examines whether SafeCore already holds such a ballast.
 
-## Part B
+## Part B, Volatility and Factor Exposures of SafeCore
+
+### Approach
+
+This part evaluates whether SafeCore, a fund built without explicit reference to volatility, has nonetheless managed volatility well. The analysis has three strands. The first compares the fund's return and risk profile with that of the Capped SWIX, its historical benchmark, across the full sample, through time, and in the calm and stressed regimes identified in Part A. The second decomposes the fund's volatility into the contribution of each sector and stock, using the marginal contribution approach from Practical 2. The third builds momentum and low volatility scores from price behaviour, tests them against the vendor's scores, and then uses all of the scores to compare SafeCore's factor exposures with those of the local strategy indexes.
+
+### Reconstructing the Fund and its Benchmark
+
+SafeCore is only provided as a set of monthly holdings, so its daily returns are rebuilt from the daily stock returns using the safe portfolio return function from the practicals, with weights drifting between month ends. Two data choices underpin this. The reported weights sum to less than one in 66 of the months since 2015, so they are rescaled to one on the assumption that the holdings represent the full equity book. A small number of daily stock returns are implausibly large, reaching 989 percent, and are capped at 25 percent, as was done in the PCA practical. The Capped SWIX is rebuilt from its own monthly constituents in exactly the same way, which ensures that any error introduced by the method affects the fund and its benchmark equally.
+
+```{r q1b_build}
+SafeCore_Rets <- Holdings_Returns_Calc(SafeCore, Stock_Returns, Start_Date = lubridate::ymd(20150101), Ret_Cap = 0.25, Port_Name = "SafeCore") # daily returns of SafeCore rebuilt from its monthly holdings
+BM_Rets <- Holdings_Returns_Calc(Monthly_Constituents %>% filter(Fund == "CappedSWIX"), Stock_Returns, Start_Date = lubridate::ymd(20150101), Ret_Cap = 0.25, Port_Name = "Capped SWIX") # daily returns of the Capped SWIX rebuilt in exactly the same way
+J433_Published <- Idx_Daily %>% filter(Tickers == "J433") %>% select(date, Returns) %>% mutate(Name = "Capped SWIX (published)") # the published index returns, used only to validate the rebuild
+bind_rows(BM_Rets %>% mutate(Name = "Capped SWIX (rebuilt)"), J433_Published) %>% # stack the rebuilt and published benchmark returns
+    group_by(Name, Year = lubridate::year(date)) %>% # one number per series per calendar year
+    summarise(Return = prod(1 + Returns) - 1, .groups = "drop") %>% # chain the daily returns into a calendar year return
+    mutate(Return = scales::percent(Return, accuracy = 0.1)) %>% # show the returns as percentages
+    spread(Year, Return) %>% # one column per year
+    knitr::kable(caption = "Calendar year returns of the rebuilt and published Capped SWIX") # print as a table
+Port_Daily <- bind_rows(SafeCore_Rets, BM_Rets) # the fund and its like for like benchmark in one tidy data frame
+```
+
+The rebuild tracks the published index closely. Calendar year returns differ by less than one percentage point in nine of the twelve years, with 42.3 percent against 42.6 percent in 2025 and 26.8 percent against 27.1 percent in 2021. The largest gaps occur in 2016 and 2019, which most likely reflects constituent changes within a month that monthly holdings cannot capture. The method is therefore reliable enough to compare SafeCore with its benchmark on a like for like basis.
+
+### Return and Risk Profile
+
+The table below sets out the return, risk and relative performance measures from Practicals 1 and 2, calculated on monthly returns, over the full sample and since 2020. The STeFI cash index serves as the risk free rate in the Sharpe ratio. The capture ratios use the arithmetic version of the PerformanceAnalytics calculation, because the default geometric version compounds every up or down month into a single return and overstates the ratio.
+
+```{r q1b_stats}
+Stats_Full <- Fund_Stats_Table(Port_Daily, BM_Name = "Capped SWIX", Rf_df = STeFI) %>% mutate(Period = "2015-2026") # statistics over the full sample
+Stats_2020 <- Fund_Stats_Table(Port_Daily %>% filter(date >= lubridate::ymd(20200101)), BM_Name = "Capped SWIX", Rf_df = STeFI) %>% mutate(Period = "2020-2026") # statistics since the start of 2020
+bind_rows(Stats_Full, Stats_2020) %>% Format_Stats_Table() %>% knitr::kable(caption = "Return and risk profile of SafeCore against the Capped SWIX") # reshape so that the measures run down the side and print
+```
+
+SafeCore has delivered a better return than its benchmark, but it has not done so by managing volatility. Over the full sample the fund returned 11.1 percent a year against 8.6 percent, with an information ratio of 0.61, yet its volatility of 14.5 percent was slightly higher than the benchmark's 14.0 percent. Its beta of 1.00 shows that it moves one for one with the market, and its down capture of 0.98 means that it suffered almost the full extent of the benchmark's losses in falling months. The fund's protective features are modest. Its maximum drawdown of 27.8 percent was shallower than the benchmark's 31.2 percent, and its modified CVaR was marginally lower. The outperformance therefore came from stock selection in rising markets, with an up capture of 1.09, rather than from protection in falling ones. The more recent period is less flattering still. Since 2020 the fund's down capture has risen to 1.09, so it has lost more than the benchmark in falling months, and its information ratio has fallen to 0.27.
+
+### Rolling Volatility Relative to the Benchmark
+
+A full sample average can hide periods when the fund ran materially more or less risk than the benchmark. The figure below compares one year rolling volatility, shading the gap red where SafeCore was more volatile and blue where it was calmer.
+
+```{r q1b_rolling}
+Plot_Roll_Vol_Gap(Port_Daily, Fund = "SafeCore", BM = "Capped SWIX", NSel = 252, # rolling one year volatility of the fund against its benchmark
+                  Title = "SafeCore Rolling Volatility Against the Capped SWIX", # the plot title
+                  Subtitle = "SafeCore has run slightly more risk than its benchmark on nine days out of ten", # the main message
+                  Caption = "Note:\nRolling 252 day annualised standard deviation of daily returns. Red shading marks periods when SafeCore was more volatile. Calculation own.") # the note under the plot
+Port_Daily %>%
+    Roll_SD_Calc(NSel = 252) %>% # the same rolling volatility as in the plot
+    select(date, Name, RollSD) %>% # keep only what the summary needs
+    spread(Name, RollSD) %>% # one column per series
+    tidyr::drop_na() %>% # both series must exist on a date
+    summarise(`Share of days SafeCore was more volatile` = scales::percent(mean(SafeCore > `Capped SWIX`), accuracy = 1), # how often the fund ran more risk
+              `Average gap in volatility` = scales::percent(mean(SafeCore - `Capped SWIX`), accuracy = 0.1)) %>% # by how much on average
+    knitr::kable(caption = "How often SafeCore ran more risk than its benchmark") # print as a table
+```
+
+The figure shows that SafeCore's excess volatility is persistent rather than episodic. The fund was more volatile than the benchmark on 91 percent of days since the rolling window begins in 2016, by an average of 0.5 percentage points, and the gap widened from late 2025 as rolling volatility for both rose towards 20 percent. The only sustained period in which SafeCore was calmer was 2017. The gap is small in absolute terms, but its persistence is telling, since a fund that managed volatility deliberately would be expected to sit below its benchmark at least some of the time.
+
+### SafeCore in Calm and Stressed Markets
+
+A ballast should earn its keep when markets are stressed. The stratification from Part A is therefore repeated for SafeCore and its benchmark, comparing their volatility in the high and low quintile months of each global state variable.
+
+```{r q1b_regimes}
+Vol_Stratify(Port_Daily, States = State_df, Hi_Q = 0.8, Lo_Q = 0.2) %>% # volatility of the fund and benchmark in the high and low months of each state variable from Part A
+    select(State, Regime, Name, SD) %>% # keep only what the table needs
+    spread(Name, SD) %>% # one column for the fund and one for the benchmark
+    mutate(`SafeCore relative to benchmark` = round(SafeCore / `Capped SWIX`, 2)) %>% # above one means SafeCore was more volatile than its benchmark in that regime
+    mutate(across(c(`Capped SWIX`, SafeCore), ~scales::percent(., accuracy = 0.1))) %>% # show the volatilities as percentages
+    arrange(Regime, State) %>% # high regimes first
+    knitr::kable(caption = "Volatility of SafeCore and the Capped SWIX in high and low global regimes") # print as a table
+```
+
+The table shows that SafeCore offers no ballast in stressed markets. In the high quintile months of every state variable, its volatility is within one percent of the benchmark's, with ratios between 1.00 and 1.02. In calm months the fund is more volatile than the benchmark, by between 2 and 9 percent. SafeCore therefore adds risk when markets are quiet and simply matches the market when they are not, which is the opposite of the profile the seminar recommended.
+
+### Sources of Portfolio Volatility
+
+The next question is where SafeCore's volatility comes from. On each quarter end since 2015, the fund's volatility is decomposed into the contribution of each holding, using the trailing year of daily returns. Following Practical 2, each stock's contribution is its weight multiplied by its marginal contribution to risk, which captures both its own volatility and its covariance with the rest of the fund, so that the contributions sum exactly to the fund's total volatility. Aggregating by sector and setting the result beside the sector weights shows whether risk is spread in proportion to capital.
+
+```{r q1b_risk, fig.width = 10}
+Risk_Dates <- SafeCore %>% distinct(date) %>% filter(date >= lubridate::ymd(20151231), lubridate::month(date) %in% c(3, 6, 9, 12) | date == max(date)) %>% pull(date) # every quarter end since 2015, plus the latest holdings date
+Risk_Contrib <- Risk_Dates %>% map_df(~Risk_Contribution_Calc(SafeCore, Stock_Returns, Date_Sel = .x, Lookback_Months = 12)) # each holding's contribution to fund volatility on every date
+Plot_Risk_vs_Weight(Risk_Contrib, # sector shares of capital and of risk through time
+                    Title = "SafeCore Sector Shares of Capital and of Risk", # the plot title
+                    Subtitle = "Resources hold a third of the capital but have generated over half of the risk since late 2025", # the main message
+                    Caption = "Note:\nRisk shares from weight times marginal contribution to risk, using a trailing one year covariance matrix at each quarter end. Calculation own.") # the note under the plot
+Risk_Contrib %>%
+    filter(date %in% c(lubridate::ymd(20241231), lubridate::ymd(20251231), max(date))) %>% # three dates that bracket the recent change
+    mutate(Sector = coalesce(Sector, "Unclassified")) %>% # give stocks with no sector a label
+    group_by(date, Sector) %>% # aggregate the stocks into sectors
+    summarise(Capital = sum(Weight), Risk = sum(Risk_Share), .groups = "drop") %>% # the sector's weight and its share of risk
+    mutate(Value = glue::glue("{scales::percent(Capital, accuracy = 1)} / {scales::percent(Risk, accuracy = 1)}")) %>% # capital share then risk share in one cell
+    select(date, Sector, Value) %>% # keep only what the table needs
+    spread(date, Value, fill = "-") %>% # one column per date
+    knitr::kable(caption = "Sector share of capital / share of risk") # print as a table
+```
+
+The decomposition reveals a sharp change in where the fund's risk sits. Until 2024, sector shares of risk broadly tracked the sector weights, with financials taking a somewhat larger share of risk than of capital. From the second half of 2025 resources came to dominate. At the end of 2025 resources made up 36 percent of the fund but generated 65 percent of its volatility, and at the end of August 2026 the figures were 33 and 52 percent. The two unclassified holdings, VAL and PAN, add a further 16 percent of risk on 7 percent of capital, and since they appear to be Valterra Platinum and Pan African Resources, the true resource share of risk is closer to two thirds.
+
+### The Largest Contributors to Risk
+
+The figure below lists the twelve largest contributors to SafeCore's volatility at the latest holdings date, setting each stock's share of risk against its share of capital.
+
+```{r q1b_top_risk}
+Latest_Risk <- Risk_Contrib %>% filter(date == max(date)) # the decomposition on the latest holdings date
+Plot_Top_Risk(Latest_Risk, Top_N = 12, # the twelve largest contributors to risk
+              Title = "Largest Contributors to SafeCore's Volatility", # the plot title
+              Subtitle = "Two gold miners carry 45 percent of the fund's risk on less than 20 percent of its capital", # the main message
+              Caption = glue::glue("Note:\nHoldings at {format(max(Latest_Risk$date), '%d %B %Y')}. Ex ante fund volatility of {scales::percent(unique(Latest_Risk$Port_Vol), accuracy = 0.1)} from a trailing one year covariance matrix. Calculation own.")) # the note under the plot, including the date and the fund volatility
+Latest_Risk %>%
+    summarise(`Top 5 share of capital` = sum(sort(Weight, decreasing = TRUE)[1:5]), # weight in the five largest holdings
+              `Top 5 risk contributors share of risk` = sum(sort(Risk_Share, decreasing = TRUE)[1:5]), # risk from the five largest contributors
+              `Ex ante volatility` = unique(Port_Vol)) %>% # the fund's estimated volatility
+    mutate(across(everything(), ~scales::percent(., accuracy = 0.1))) %>% # show as percentages
+    knitr::kable(caption = "Concentration of risk at the latest holdings date") # print as a table
+```
+
+Risk in SafeCore is far more concentrated than capital. AngloGold Ashanti makes up 12.0 percent of the fund but 27.8 percent of its risk, and Gold Fields makes up 7.5 percent but 17.2 percent of the risk, so two gold miners carry 45 percent of the fund's volatility. More broadly, the five largest contributors generate 67.9 percent of the fund's risk, while the five largest holdings account for 45.6 percent of its capital. The large banks and MTN, by contrast, contribute less risk than their weights, because their returns are less volatile and diversify the resource holdings. The fund's estimated volatility of 20.4 percent is therefore, to a large extent, a bet on the gold price.
+
+### Building Own Momentum and Low Volatility Scores
+
+Momentum is measured as the cumulative return from six months to one month before each month end, following the suggestion in the paper. Skipping the most recent month avoids the short term reversal effect, in which last month's winners tend to give back part of their gains. A six month window is preferred to the more common twelve month window because it responds faster when market leadership rotates, which matters for a fund concerned with volatility. The low volatility score is the negative of each stock's annualised realised volatility over the past six months, so that a higher score always indicates a more defensive stock. Realised volatility is preferred to beta because SafeCore's concern is the total volatility of its holdings, and because realised volatility is highly persistent, which makes the recent past a reasonable guide to the near future.
+
+Both measures use daily returns capped at 25 percent and require a stock to have traded on at least 80 percent of the days in the window. Each month they are converted into cross-sectional z-scores within the vendor's universe and winsorised at three standard deviations, which places them on the same scale as the vendor's scores. A 12-1 momentum score and each stock's market and downside beta are also calculated, purely to diagnose what the vendor's scores measure.
+
+```{r q1b_own_scores}
+Score_Dates <- sort(unique(Factor_Scores$date)) # the month ends on which the vendor provides scores
+Own_Scores <- Own_Factor_Scores(Stock_Returns, Score_Dates, Mom_Months = 6, Skip_Months = 1, Vol_Months = 6, Ret_Cap = 0.25, Min_Coverage = 0.8) # own 6-1 momentum and 6 month realised volatility for every stock
+Own_Mom12 <- Own_Factor_Scores(Stock_Returns, Score_Dates, Mom_Months = 12, Skip_Months = 1, Vol_Months = 6) %>% select(date, Tickers, Mom12_Raw = Mom_Raw) # a 12-1 momentum variant, used only as a diagnostic
+Stock_Betas <- Stock_Beta_Calc(Stock_Returns, Idx_Daily %>% filter(Tickers == "J433") %>% select(date, Mkt = Returns), Score_Dates, Months = 12) # market and downside betas against the Capped SWIX, used only as a diagnostic
+Scores_All <-
+    Factor_Scores %>%
+    spread(Factor, Factor_Value) %>% # one column per vendor factor
+    left_join(Own_Scores, by = c("date", "Tickers")) %>% # attach the own measures
+    left_join(Own_Mom12, by = c("date", "Tickers")) %>% # attach the 12-1 momentum variant
+    left_join(Stock_Betas, by = c("date", "Tickers")) %>% # attach the betas
+    mutate(LowVol_Raw = -Vol_Raw) %>% # flip the sign so that a higher score means lower volatility
+    Zscore_Calc(Cols = c("Mom_Raw", "Mom12_Raw", "LowVol_Raw"), Cap = 3) %>% # standardise within the vendor's universe each month
+    rename(Momentum_Own = Mom_Raw, Momentum12_Own = Mom12_Raw, LowVol_Own = LowVol_Raw) # clearer names for the own scores
+```
+
+### Own Scores Against the Vendor Scores
+
+The comparison uses the Spearman rank correlation across stocks each month, since what matters for a factor portfolio is whether two scores rank stocks in the same order rather than whether their values coincide.
+
+```{r q1b_score_compare}
+Score_Pairs <- tibble(X = c("Momentum_Own", "Momentum12_Own", "LowVol_Own"), # the own scores
+                      Y = c("Momentum", "Momentum", "Volatility Sensitivity"), # the vendor score each is compared with
+                      Label = c("Own 6-1 momentum vs vendor momentum", "Own 12-1 momentum vs vendor momentum", "Own low volatility vs vendor volatility sensitivity")) # readable labels
+Score_Cor <- Score_Rank_Cor(Scores_All, Score_Pairs) # the monthly rank correlation of each pair
+Plot_Score_Cor(Score_Cor, # plot the three rank correlations through time
+               Title = "Own Scores Against the Vendor's Scores", # the plot title
+               Subtitle = "Vendor momentum matches a 12-1 definition almost exactly, while its volatility score barely ranks stocks by volatility", # the main message
+               Caption = "Note:\nMonthly Spearman rank correlation across stocks. Dashed lines show averages. Calculation own.") # the note under the plot
+Diag_Pairs <- tidyr::expand_grid(Y = c("Earnings Quality", "Growth", "Momentum", "Value", "Volatility Sensitivity"), # every vendor factor
+                                 X = c("Momentum_Own", "Momentum12_Own", "LowVol_Own", "Beta", "Downside_Beta")) %>% # against every own measure
+    mutate(Label = paste(X, Y, sep = " | ")) # a label that can be split again afterwards
+Score_Rank_Cor(Scores_All, Diag_Pairs) %>% # the monthly rank correlation of every combination
+    group_by(Label) %>% # one number per combination
+    summarise(Rho = round(mean(Rho), 2)) %>% # the average over all months
+    tidyr::separate(Label, c("Own measure", "Vendor factor"), sep = " \\| ") %>% # split the label back into its two parts
+    spread(`Vendor factor`, Rho) %>% # one column per vendor factor
+    knitr::kable(caption = "Average monthly rank correlation between own measures and vendor factors") # print as a table
+```
+
+The comparison yields two clear findings about the vendor's data. The vendor's momentum score is almost certainly a 12-1 measure, since a 12-1 score built from prices ranks stocks the same way with an average correlation of 0.93, while the 6-1 score proposed in the paper agrees only at 0.60 and dropped close to zero in early 2021. The two momentum scores therefore answer different questions, with the shorter window capturing more recent shifts in leadership.
+
+The vendor's volatility score is more problematic. It has an average rank correlation of only 0.10 with the own low volatility score and fell below zero for much of 2021 and 2022. The diagnostic table suggests what it measures instead, since its strongest relationship is with downside beta, at -0.34, meaning that stocks which fall most when the market falls receive the lowest scores. Volatility Sensitivity is therefore closer to a measure of downside market exposure than of total volatility. A further oddity is that the vendor's earnings quality score correlates at -0.33 with the own low volatility score, so the vendor rates more volatile stocks as having higher quality earnings, which is the opposite of what quality strategies usually assume. Both findings counsel caution before using the vendor scores to steer a defensive mandate.
+
+### Composite Factor Scores Across Strategies
+
+To place SafeCore's exposures in context, each portfolio's composite score for a factor is calculated as the weighted average of its holdings' z-scores, rescaled over the holdings that have a score. The same calculation is applied to the Capped SWIX and to the local strategy, size and property indexes, so that SafeCore can be compared with portfolios built deliberately to hold each factor. Since the vendor scores are z-scores within a universe of mostly larger stocks, a score of zero represents the average stock in that universe.
+
+```{r q1b_composite, fig.width = 10, fig.height = 6.5}
+Strategy_Holdings <-
+    Local_Index_Constituents %>%
+    mutate(YM = format(date, "%Y%m")) %>% # a year and month label
+    group_by(Index, YM) %>% # one set of holdings per index per month
+    filter(date == max(date)) %>% # keep the last trading day of each month
+    ungroup() %>% # remove the grouping again
+    select(date, Portfolio = Index, Tickers, Weight = weight) # the shape that the composite score function expects
+All_Holdings <- bind_rows(Strategy_Holdings, SafeCore %>% filter(date >= lubridate::ymd(20200101)) %>% select(date, Portfolio = Fund, Tickers, Weight)) # the strategy indexes and SafeCore together
+Scores_Long <-
+    Scores_All %>%
+    select(date, Tickers, `Earnings Quality`, Growth, Value, `Vendor Momentum` = Momentum, `Vendor Volatility Sensitivity` = `Volatility Sensitivity`, # the vendor factors
+           `Own Momentum (6-1)` = Momentum_Own, `Own Low Volatility` = LowVol_Own) %>% # and the own scores
+    gather(Factor, Score, -date, -Tickers) # long format, one row per stock, factor and month
+Port_Factor_Scores <- Portfolio_Factor_Scores(All_Holdings, Scores_Long) # the weighted average score of every portfolio for every factor and month
+Plot_Factor_Heatmap(Port_Factor_Scores, Start_Date = lubridate::ymd(20200801), Cap = 0.5, # average exposures since the strategy index data begins
+                    Port_Order = c("SafeCore", "Capped SWIX", "LowVol", "Momentum", "Value", "Quality", "Large Caps", "Mid Caps", "Small Caps", "REITS"), # SafeCore and its benchmark first, then the strategies
+                    Title = "Composite Factor Scores by Strategy", # the plot title
+                    Subtitle = "SafeCore tilts towards earnings quality, value and momentum, but has no low volatility tilt", # the main message
+                    Caption = "Note:\nWeighted average z-scores of holdings, averaged from August 2020 to August 2026. Colours capped at 0.5. Calculation own.") # the note under the plot
+```
+
+The heatmap shows that the own scores identify the strategy indexes correctly, which supports their construction. The low volatility index scores 0.43 on the own low volatility score, well above the Capped SWIX at 0.04, and the momentum index scores 0.35 on own momentum and 0.33 on vendor momentum. The vendor's volatility score, by contrast, gives the low volatility index a score of -0.01, the same as the market, which confirms that it cannot identify a portfolio built to be defensive. Against this backdrop SafeCore carries modest positive tilts towards earnings quality, at 0.14 against -0.01 for the benchmark, value, at 0.10 against 0.01, and momentum. Its own low volatility score of 0.05 is indistinguishable from the benchmark's 0.04 and about a tenth of the low volatility index's, so the fund holds no meaningful low volatility exposure.
+
+### SafeCore's Active Factor Exposures
+
+Average exposures can conceal changes in a fund's character. The figure below tracks SafeCore's exposure to each factor minus the benchmark's, month by month.
+
+```{r q1b_active, fig.width = 10, fig.height = 8}
+Active_Factors <- c("Own Low Volatility", "Vendor Volatility Sensitivity", "Own Momentum (6-1)", "Vendor Momentum", "Earnings Quality", "Value") # the factors most relevant to the volatility question, leaving out growth, which sits close to zero throughout
+Plot_Active_Exposure(Port_Factor_Scores %>% filter(date >= lubridate::ymd(20200801), Factor %in% Active_Factors), Fund = "SafeCore", BM = "Capped SWIX", # active exposures of SafeCore against its benchmark
+                     Title = "SafeCore Active Factor Exposures Against the Capped SWIX", # the plot title
+                     Subtitle = "In 2026 the fund became a momentum play with more downside exposure than its benchmark", # the main message
+                     Caption = "Note:\nSafeCore composite z-score minus Capped SWIX composite z-score. Orange marks an overweight tilt and blue an underweight tilt. Calculation own.") # the note under the plot
+Port_Factor_Scores %>%
+    filter(Portfolio %in% c("SafeCore", "Capped SWIX"), Factor %in% Active_Factors, date >= lubridate::ymd(20200801)) %>% # the fund and benchmark scores for the chosen factors
+    select(date, Portfolio, Factor, Score) %>% # keep only what the table needs
+    spread(Portfolio, Score) %>% # one column for the fund and one for the benchmark
+    mutate(Active = SafeCore - `Capped SWIX`, # the active exposure
+           Period = ifelse(date < lubridate::ymd(20250101), "Aug 2020 to Dec 2024", ifelse(date < lubridate::ymd(20260101), "2025", "2026 YTD"))) %>% # three periods to compare
+    group_by(Factor, Period) %>% # one number per factor per period
+    summarise(Active = round(mean(Active), 2), .groups = "drop") %>% # the average active exposure in the period
+    spread(Period, Active) %>% # one column per period
+    select(Factor, `Aug 2020 to Dec 2024`, `2025`, `2026 YTD`) %>% # order the periods in time
+    knitr::kable(caption = "Average active factor exposure of SafeCore by period") # print as a table
+```
+
+The active exposures change character in 2026. Through most of the sample SafeCore held a steady overweight in earnings quality and value and a varying momentum tilt, while its low volatility exposure moved either side of zero with no persistent sign. In 2026 the vendor momentum tilt rose to its highest level in the sample, averaging 0.26 against 0.10 before 2025, as the fund's gold miners rallied. Over the same months the vendor volatility sensitivity exposure turned clearly negative, at -0.11, meaning that the fund held stocks with more downside market exposure than the benchmark. The fund's own low volatility exposure also turned slightly negative, at -0.06. These shifts are consistent with the risk decomposition, since they describe a fund whose largest positions had become its most volatile.
+
+### Conclusion to Part B
+
+SafeCore does not navigate volatility effectively, although it has been successful on other measures. The fund outperformed the Capped SWIX by 2.5 percentage points a year with an information ratio of 0.61, and its drawdowns were somewhat shallower. That success came from stock selection in rising markets rather than from risk management. The fund has been slightly more volatile than its benchmark on 91 percent of days, it matches the benchmark's volatility in stressed regimes rather than reducing it, it has lost more than the benchmark in falling months since 2020, and it carries no meaningful low volatility exposure. Its risk has also become highly concentrated, with two gold miners generating 45 percent of the fund's volatility at the latest holdings date.
+
+For the team, three implications follow. The fund's risk is currently a concentrated bet on precious metals rather than a broad equity exposure, which the investment committee should either accept explicitly or reduce. A low volatility sleeve or a cap on any single stock's contribution to risk would be a more direct route to a risk ballast than relying on the fund's existing quality and value tilts. Lastly, the vendor's volatility score should not be used to build such a sleeve, since it fails to identify the existing low volatility index, and a score built from realised volatility does the job considerably better.
 
 ## Part C
 
