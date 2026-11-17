@@ -6,9 +6,9 @@ output:
 
 # Purpose
 
-This repository holds my answers to the 2026 Financial Econometrics practical exam, student number 24991422. This README is the document to read, because it walks through the code and the thinking behind every question in the order the paper asks them. The finished write-ups sit in the `Questions` folder, with one folder per question.
+This repository contains the answers to the 2026 Financial Econometrics practical examination for student number 24991422. This README is the primary document, as it sets out the code and the reasoning behind each question in the order in which the paper presents them. The finished write-ups are stored in the `Questions` folder, with one folder per question.
 
-The layout follows a simple rule. Every function I wrote lives in the `code` folder, split into one subfolder per question, and this README only calls those functions. The data lives in the `data` folder, which is deliberately left out of the repository through the `.gitignore` file.
+The repository follows a consistent structure. Every function is stored in the `code` folder, with one subfolder per question, and this README only calls those functions. The data is stored in the `data` folder, which is excluded from the repository through the `.gitignore` file.
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(message = FALSE, warning = FALSE, fig.width = 9, fig.height = 5.5) # hide package messages and warnings in the output and set a sensible default figure size
@@ -21,9 +21,9 @@ library(tidyverse) # load the tidyverse for data wrangling and plotting
 list.files('code/', full.names = T, recursive = T) %>% .[grepl('.R', .)] %>% as.list() %>% walk(~source(.)) # source every function saved in the code folder and its subfolders
 ```
 
-# How this folder was built
+# Folder Construction
 
-The root project was created with `fmxdat::make_project()`, and each question folder was created with Texevier. The chunk below records those calls for transparency. It is not evaluated, because the folders already exist.
+The root project was created with `fmxdat::make_project()`, and each question folder was created with Texevier. The chunk below records those calls for transparency but is not evaluated, since the folders already exist.
 
 ```{r folder_build, eval = FALSE}
 fmxdat::make_project(Mac = TRUE) # build the root project with its code, data, bin and settings folders
@@ -44,7 +44,7 @@ options(dplyr.summarise.inform = F) # stop summarise from printing a grouping me
 options(scipen = 999) # show numbers in full instead of scientific notation
 ```
 
-# Question 1: Exploring Risk and Uncertainty
+# Question 1, Exploring Risk and Uncertainty
 
 ```{r q1_data}
 Uncertainty_Indexes <- read_rds("data/Econ_Uncertainty_Indexes.rds") # economic policy uncertainty indexes and the MOVE bond volatility index
@@ -59,13 +59,13 @@ SafeCore <- read_rds("data/SafeCore.rds") # monthly holdings and weights of the 
 Factor_Scores <- read_rds("data/Factor_Scores.rds") # third party factor scores per stock, where a lower value means a lower exposure
 ```
 
-## Part A: Has local volatility increased, and does it mirror the global experience?
+## Part A, Local Volatility in a Global Context
 
-### The thinking
+### Approach
 
-Before touching a model I had to decide what "increased volatility" should mean, because the answer depends on the yardstick. I settled on three questions that build on each other. Is the local market more volatile now than in its own recent past? Is the same true abroad? And when local volatility does rise, which global force is it actually responding to? The first two questions need a consistent measure of volatility across markets, while the third needs a way of sorting history into regimes.
+This part establishes whether volatility on the local exchange has increased and whether that increase mirrors the global experience. The analysis proceeds in four steps. It first compares annualised volatility across sub-periods, then traces the timing of volatility with a rolling window, then separates the volatility signal from noise using GARCH models, and finally stratifies the sample by global conditions to identify which external forces local volatility responds to.
 
-Three choices shape everything below. The Capped SWIX (J433) is my local yardstick, because it is the benchmark the fund is measured against and its caps stop one or two mega caps from driving the result. For the global side I use the MSCI All Country World index as the broad global experience and the MSCI Emerging Markets index as the peer group South Africa actually belongs to. Lastly, the global indexes are quoted in dollars while the local index is in rand. I keep each in its own currency on purpose, since the question is about the volatility each investor base lives through, but it does mean that part of any gap reflects the rand.
+Three choices shape the analysis. The Capped SWIX (J433) serves as the local yardstick, since it is the fund's benchmark in Part B and its capping prevents a handful of large shares from dominating the result. The MSCI All Country World index represents the global experience, while the MSCI Emerging Markets index represents the peer group to which South Africa belongs. The local index is quoted in rand and the MSCI indexes in dollars, and each is kept in its own currency because the question concerns the volatility that each investor base experiences. Part of any difference between them may therefore reflect movements in the rand.
 
 ```{r q1a_returns}
 Local_Rets <- Idx_Daily %>% filter(Name %in% c("Capped SWIX", "Top 40", "MidCaps", "SmallCaps")) %>% mutate(dlogret = log(1 + Returns)) %>% select(date, Name, Returns, dlogret) # keep the four vanilla local indexes and add log returns for the volatility models
@@ -73,9 +73,9 @@ Global_Rets <- read_rds("data/MSCI_Indexes.rds") %>% filter(Name %in% c("MSCI_AC
 All_Rets <- bind_rows(Local_Rets, Global_Rets) # stack local and global returns into one tidy data frame
 ```
 
-### Step 1: Volatility by period
+### Volatility by Period
 
-The simplest honest test is to cut the sample into periods and compare. I separate the calm pre-Covid years, the Covid year itself, the recovery, and then 2025 and 2026 on their own, since those are the years the seminar was about.
+The most direct test compares annualised volatility across periods. The sample is divided into the calm years before Covid, the Covid year itself, the recovery from 2021 to 2024, and 2025 and 2026 separately, since these two years are the focus of the seminar.
 
 ```{r q1a_period_table}
 Periods <- tibble(Period = c("2015-2019", "2020 (Covid)", "2021-2024", "2025", "2026 YTD"), # the names of the sub-periods
@@ -85,40 +85,40 @@ Vol_Periods <- Vol_Period_Table(All_Rets, Periods) # annualised volatility of ev
 Vol_Periods %>% select(Name, Period, SD) %>% mutate(SD = scales::percent(SD, accuracy = 0.1)) %>% spread(Period, SD) %>% knitr::kable(caption = "Annualised volatility by period") # reshape so that each period is a column and print as a table
 ```
 
-The table already gives most of the answer. The Capped SWIX ran at 20.7 percent in 2026, well above the 15.7 percent of 2021 to 2024 and above its full sample level of 17.8 percent. The global index tells the opposite story, with the MSCI ACWI at 12.0 percent in 2026, below its own full sample level of 14.1 percent. Emerging markets, however, jumped to 25.2 percent. Local volatility has therefore risen, but it is an emerging market experience and not a global one. Small caps stand out as well, since their volatility barely moved in 2026, which is an early hint that the turbulence sits in the large, globally exposed shares.
+The table shows that local volatility rose in 2026 while global volatility did not. The Capped SWIX recorded annualised volatility of 20.7 percent in 2026, above the 15.7 percent of 2021 to 2024 and its full sample level of 17.8 percent. The MSCI ACWI moved in the opposite direction, at 12.0 percent in 2026 against a full sample level of 14.1 percent, while the MSCI Emerging Markets index rose to 25.2 percent. The rise in local volatility therefore resembles the emerging market experience far more closely than the global one. Small caps are a notable exception, with volatility of 12.0 percent in 2026 against 14.0 percent over the full sample, which suggests that the turbulence was concentrated in the larger and more globally exposed shares of the Top 40, where volatility reached 22.4 percent.
 
-### Step 2: Rolling realised volatility
+### Rolling Realised Volatility
 
-Period averages hide timing, so the next step rolls a three month window (63 trading days) through the sample. I chose three months because it is long enough to be a stable estimate and short enough to show when a volatility episode starts and ends. The dashed line is each index's own long run average.
+Period averages conceal the timing of volatility, so a rolling window of three months (63 trading days) is passed through the sample. Three months is long enough to give a stable estimate and short enough to show when an episode begins and ends. The dashed lines in the figure mark each index's own long run average.
 
 ```{r q1a_rolling, fig.height = 7}
 Roll_Vol <- Roll_SD_Calc(All_Rets, NSel = 63) # rolling three month annualised volatility for every index
 Plot_Roll_Vol(Roll_Vol %>% filter(Name %in% c("Capped SWIX", "MSCI_ACWI", "MSCI_EM")), # plot the local benchmark against the global and emerging market indexes
               Title = "Rolling 3 Month Realised Volatility", # the plot title
-              Subtitle = "Local volatility spiked in 2026 alongside emerging markets, while global volatility stayed below average", # the main message
+              Subtitle = "Local volatility rose in 2026 alongside emerging markets, while global volatility stayed below its average", # the main message
               Caption = "Note:\nDashed lines show each index's own average. Local index in ZAR, MSCI indexes in USD. Calculation own.") # the note under the plot
 ```
 
-Two things come out of this. The 2026 episode was real, with local rolling volatility peaking at 27 percent in April 2026, its highest reading outside of Covid and the 2015 to 2016 commodity slump. It was also temporary, and by the end of September 2026 the measure was back at 15 percent, almost exactly its median. A fair reading is that the local market went through a sharp volatility episode and not a permanent shift to a higher level.
+The figure shows that the 2026 increase was a pronounced but temporary episode. Rolling local volatility peaked at 27 percent in April 2026, its highest level outside of the Covid crash and the 2015 to 2016 sell-off. By the end of September 2026 it had fallen back to 15 percent, close to the median of its own history. Emerging market volatility followed a similar path at a higher level, peaking at 31 percent in July, while the global index peaked at only 14.7 percent against its average of 12.6 percent. The evidence points to a volatility episode rather than a lasting shift to a higher level of local volatility.
 
-### Step 3: A noise reduced view using GARCH
+### Conditional Volatility from GARCH Models
 
-Realised volatility has a weakness. A single large return stays in the window for three months and then drops out, which creates the cliff edges visible in mid 2025. A GARCH model avoids this by separating the volatility signal from the noise, as we covered in the volatility practical. I do not want to assume a specification, so the function below fits four candidates per index (standard GARCH, GJR, EGARCH and APARCH), each with an AR(1) mean and student t errors, and keeps the one with the lowest AIC.
+Realised volatility has a mechanical weakness, since a single large return remains in the window for three months and then drops out abruptly, which produces the cliff edges visible in mid 2025. A GARCH model avoids this by separating the volatility signal from the noise in returns. To avoid imposing a specification, the function fits four candidate models to each index, namely the standard GARCH, GJR, EGARCH and APARCH, each with an AR(1) mean equation and student t errors, and retains the model with the lowest AIC.
 
 ```{r q1a_garch}
 Garch_Sigma <- c("Capped SWIX", "MSCI_ACWI", "MSCI_EM") %>% map_df(~Best_Garch_Sigma(All_Rets, Series = .x)) # fit the best GARCH model to each index and stack the conditional volatility series
 Garch_Sigma %>% group_by(Name, Model) %>% summarise(Persistence = round(dplyr::first(Persistence), 3), `Average Sigma` = scales::percent(mean(Sigma), 0.1), `Average Sigma 2026` = scales::percent(mean(Sigma[date >= lubridate::ymd(20260101)]), 0.1)) %>% knitr::kable(caption = "Chosen GARCH model per index") # summarise which model won and what it says about 2026
 Plot_Garch_Sigma(Garch_Sigma, # plot the three conditional volatility series together
                  Title = "Conditional Volatility: Local vs Global", # the plot title
-                 Subtitle = "From late 2025 the local line follows emerging markets up and leaves the global line behind", # the main message
+                 Subtitle = "From late 2025 local volatility rises with emerging markets, while global volatility remains subdued", # the main message
                  Caption = "Note:\nBest fitting GARCH(1,1) model per index by AIC, smoothed with a 21 day average. Shaded area is 2026. Calculation own.") # the note under the plot
 ```
 
-For both the Capped SWIX and the global index the data prefer an EGARCH, and the emerging market index prefers a GJR. Both are asymmetric models, which tells us that bad news raises volatility by more than good news of the same size. That matters for the low volatility argument in the seminar, since it means volatility arrives precisely when returns are falling. Persistence is 0.97 locally, so a shock to volatility takes weeks to fade. The model agrees with the realised numbers, with local conditional volatility averaging 19.1 percent in 2026 against a full sample average of 16.5 percent, while the global figure sat at 11.6 percent, slightly below its own norm of 12.2 percent.
+The data favour asymmetric models for all three indexes, with an EGARCH selected for the Capped SWIX and the global index and a GJR model for emerging markets. Asymmetry means that negative shocks raise volatility by more than positive shocks of the same size, so volatility tends to arrive when returns are already falling. This is relevant to the low volatility argument made at the seminar, since the protection a low volatility portfolio offers is most valuable in exactly those periods. Persistence of 0.97 for the Capped SWIX implies that half of a volatility shock is still present after roughly 24 trading days. Local conditional volatility averaged 19.1 percent in 2026 against 16.5 percent over the full sample, while global conditional volatility averaged 11.6 percent, slightly below its own norm of 12.2 percent. With the noise removed, the GARCH estimates confirm the pattern found in realised volatility.
 
-### Step 4: What is local volatility responding to?
+### Volatility Across Global Regimes
 
-The seminar blamed oil price volatility and policy uncertainty. Rather than take that on faith, I stratify the sample in the way we did for rand volatility in the Practical 2 bonus. Each month is sorted by a state variable, and the top and bottom quintile of months are labelled High and Low. I then compare the Capped SWIX's volatility inside those months to its full sample volatility. I run this for five states, namely the VIX, emerging market implied volatility (VXEEM), the rand volatility index (SAVIUSD), the global economic policy uncertainty index (EPUCGLCP) and the realised volatility of Brent oil.
+The seminar attributed rising local volatility to oil price volatility and global policy uncertainty. This claim is tested by stratifying the sample, following the approach used for rand volatility in the Practical 2 bonus. Each month is ranked by a state variable, and the top and bottom quintiles of months are labelled high and low. The volatility of the Capped SWIX within those months is then compared with its full sample volatility. Five state variables are considered, namely the VIX, emerging market implied volatility (VXEEM), rand volatility (SAVIUSD), the global economic policy uncertainty index (EPUCGLCP), and the realised volatility of Brent oil.
 
 ```{r q1a_stratify}
 Gauges <- bind_rows(Implied_Vol, Uncertainty_Indexes, Local_Cncy_Vol_Index %>% select(-Description)) # stack the volatility and uncertainty gauges that are quoted as levels
@@ -127,34 +127,34 @@ State_df <- State_Monthly_Calc(Level_df = Gauges, Level_Sel = c("VIX", "VXEEM", 
 Vol_Strat <- Vol_Stratify(Local_Rets, States = State_df, Hi_Q = 0.8, Lo_Q = 0.2) # local index volatility in the high and low quintile months of each state
 Plot_Vol_Stratify(Vol_Strat, Index_Sel = "Capped SWIX", # plot the result for the local benchmark
                   Title = "Capped SWIX Volatility by Global Regime", # the plot title
-                  Subtitle = "Market based stress matters, while news based policy uncertainty on its own does not", # the main message
+                  Subtitle = "Market-based stress raises local volatility, while news-based policy uncertainty alone has little effect", # the main message
                   Caption = "Note:\nHigh and Low are the top and bottom quintile of months for each state variable since 2015. Calculation own.") # the note under the plot
 ```
 
-This is the most useful result of Part A. When oil volatility is in its top quintile, the Capped SWIX is 1.41 times as volatile as normal, and the figures for emerging market and US implied volatility are 1.50 and 1.46. The policy uncertainty index is the exception. In its most uncertain months local volatility is only 1.06 times normal, and in its calmest months it is exactly normal. Policy uncertainty reached record levels in 2025 and 2026, yet it only shows up in local share prices once it is transmitted through a market channel such as oil or emerging market risk appetite.
+The figure separates market-based stress from news-based uncertainty. In months when oil volatility sits in its top quintile, the Capped SWIX is 1.41 times as volatile as normal, and the equivalent ratios for emerging market and US implied volatility are 1.50 and 1.46. Rand volatility has a similar but smaller effect, at 1.34. Global policy uncertainty is the exception, with local volatility only 1.06 times normal in its most uncertain months and exactly normal in its calmest. Policy uncertainty reached its highest annual average since 2015 in 2025, at 394 against 298 during the Covid year, yet it appears to affect local share prices only once it is transmitted through a market channel, such as oil prices or emerging market risk appetite.
 
-### Answer to Part A
+### Conclusion to Part A
 
-Local volatility has increased, but with two qualifications. It rose as an episode, peaking in April 2026 and normalising by September, and not as a new permanent level. It also does not mirror the global experience, since developed markets were calmer than usual over the same months. It mirrors emerging markets and the oil market. For a team that wants to build a risk ballast into a local fund, the implication is that the threat to plan for is a commodity and emerging market shock. A ballast that only protects against a rise in the VIX would have missed 2026.
+Local volatility has increased, subject to two qualifications. The increase took the form of an episode, peaking in April 2026 and normalising by September, rather than a permanent rise in the level of volatility. It also did not mirror the global experience, since developed market volatility remained below its average over the same months, and instead followed emerging markets and the oil market. For a team considering a risk ballast in a local fund, the relevant threat is therefore a commodity and emerging market shock. A ballast calibrated only to developed market stress would have missed the 2026 episode, since global volatility stayed below its average throughout.
 
 ## Part B
 
 ## Part C
 
-# Question 2: Mid, Small and Large Cap Indices
+# Question 2, Mid, Small and Large Cap Indices
 
 ```{r q2_data}
 Size_Idx <- read_rds("data/Monthly_Index_Constituents.rds") # monthly constituents and weights for the Capped SWIX and the large, mid and small cap indexes
 ```
 
-# Question 3: Portfolio Return Comparison
+# Question 3, Portfolio Return Comparison
 
 ```{r q3_data}
 Active_Manager_Peers <- read_rds("data/Active_Managers.rds") # monthly returns for the active manager peer group
 ABC_Fund <- read_rds("data/ABC_Fund.rds") # monthly returns for the ABC fund
 ```
 
-# Question 4: Portfolio Construction
+# Question 4, Portfolio Construction
 
 ```{r q4_data}
 MSCI <- read_rds("data/MSCI_Indexes.rds") # total return indexes for the MSCI global equity indexes
