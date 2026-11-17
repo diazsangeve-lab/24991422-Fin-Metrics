@@ -5,6 +5,8 @@ Plot_Avg_Corr <- function(df, Highlight_From = lubridate::ymd(20260101), Title =
 
     Peak <- df %>% slice_max(Implied_Corr, n = 1, with_ties = FALSE) # the month with the highest cap-weighted correlation
     Ends <- df %>% filter(date == max(date)) # the last month, where the line labels go
+    Gap <- 0.06 # the smallest vertical gap between the two end labels, so that they never overlap
+    Lab_Y <- if (Ends$Implied_Corr >= Ends$Avg_Corr) c(max(Ends$Implied_Corr, Ends$Avg_Corr + Gap), Ends$Avg_Corr) else c(Ends$Implied_Corr, max(Ends$Avg_Corr, Ends$Implied_Corr + Gap)) # the label heights, pushed apart when the lines end close together
 
     g <-
         df %>%
@@ -16,8 +18,8 @@ Plot_Avg_Corr <- function(df, Highlight_From = lubridate::ymd(20260101), Title =
         geom_line(aes(date, Implied_Corr), color = "firebrick", linewidth = 1.2) + # the cap-weighted implied correlation
         geom_point(data = Peak, aes(date, Implied_Corr), color = "firebrick", size = 3) + # mark the peak
         geom_label(data = Peak, aes(date, Implied_Corr, label = glue::glue("{format(date, '%b %Y')}: {sprintf('%.2f', Implied_Corr)}")), vjust = -0.5, size = fmxdat::ggpts(8), label.size = 0, fill = "white") + # label the peak
-        annotate("text", x = Ends$date, y = Ends$Implied_Corr, label = "Cap-weighted\nimplied", color = "firebrick", hjust = -0.1, fontface = "bold", size = fmxdat::ggpts(8.5), lineheight = 0.85) + # label the implied correlation at its end
-        annotate("text", x = Ends$date, y = Ends$Avg_Corr, label = "Average\npairwise", color = "grey35", hjust = -0.1, fontface = "bold", size = fmxdat::ggpts(8.5), lineheight = 0.85) + # label the pairwise average at its end
+        annotate("text", x = Ends$date, y = Lab_Y[1], label = "Cap-weighted\nimplied", color = "firebrick", hjust = -0.1, fontface = "bold", size = fmxdat::ggpts(8.5), lineheight = 0.85) + # label the implied correlation at its end
+        annotate("text", x = Ends$date, y = Lab_Y[2], label = "Average\npairwise", color = "grey35", hjust = -0.1, fontface = "bold", size = fmxdat::ggpts(8.5), lineheight = 0.85) + # label the pairwise average at its end
         scale_x_date(expand = expansion(mult = c(0.01, 0.14)), date_breaks = "1 year", date_labels = "%Y") + # yearly labels and room on the right for the line labels
         scale_y_continuous(expand = expansion(mult = c(0.05, 0.15))) + # room above the peak label
         fmxdat::theme_fmx(title.size = fmxdat::ggpts(30), subtitle.size = fmxdat::ggpts(26), caption.size = fmxdat::ggpts(22), CustomCaption = T) + # the clean course theme with readable text sizes

@@ -30,7 +30,7 @@ Plot_Risk_vs_Weight <- function(df, Sector_Order = c("Financials", "Industrials"
         scale_y_continuous(labels = function(x) scales::percent(abs(x), accuracy = 1), breaks = seq(-1, 1, 0.25)) + # percentages on both sides of the axis
         scale_x_date(expand = expansion(mult = c(0.01, 0.16)), date_breaks = "2 years", date_labels = "%Y") + # room on the right for the sector labels
         scale_fill_manual(values = Sector_Cols) + # a palette that makes resources, the story of the chart, stand out against muted blues and greys
-        scale_color_manual(values = Sector_Cols) + # the same colours for the inline labels
+        scale_color_manual(values = Darken_Col(Sector_Cols, 0.35)) + # darker versions of the sector colours for the inline labels, so that the light shades stay legible on white
         guides(fill = "none", color = "none") + # the sectors are labelled directly
         fmxdat::theme_fmx(title.size = fmxdat::ggpts(30), subtitle.size = fmxdat::ggpts(26), caption.size = fmxdat::ggpts(22), CustomCaption = T) + # the clean course theme with readable text sizes
         labs(x = "", y = "", title = Title, subtitle = Subtitle, caption = Caption) # axis names, title and note

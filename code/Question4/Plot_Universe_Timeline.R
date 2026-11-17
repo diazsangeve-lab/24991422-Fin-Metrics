@@ -26,7 +26,7 @@ Plot_Universe_Timeline <- function(R_Long, Meta, Pal, Excluded = NULL, Est_Start
         scale_x_date(date_breaks = "2 years", date_labels = "%Y", expand = expansion(mult = c(0.01, 0.02))) + # dates along the bottom
         scale_y_discrete(expand = expansion(add = c(0.6, 1.6))) + # room above the rows for the window labels
         fmxdat::theme_fmx(title.size = fmxdat::ggpts(30), subtitle.size = fmxdat::ggpts(26), caption.size = fmxdat::ggpts(22), CustomCaption = T) + # the clean course theme with readable text sizes
-        theme(axis.text.y = element_text(color = Spans$Col[match(levels(Spans$Asset), Spans$Asset)], face = "bold")) + # colour each asset name by its family, in the order the axis lists them
+        theme(axis.text.y = element_text(color = Darken_Col(Spans$Col[match(levels(Spans$Asset), Spans$Asset)], 0.5), face = "bold")) + # colour each asset name by its family, in the order the axis lists them
         labs(x = "", y = "", title = Title, subtitle = Subtitle, caption = Caption) # axis names, title and note
 
     g

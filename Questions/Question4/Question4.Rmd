@@ -103,7 +103,7 @@ abstract: |
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, fig.width = 9, fig.height = 5.5, out.width = "100%", fig.align = "center", fig.pos = "!htbp") # hide code and messages in the pdf, centre figures at the page width and let LaTeX place each one at the top or bottom of a page, or two to a page of figures, so that no page is left half empty
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, fig.width = 9, fig.height = 5.5, out.width = "100%", fig.align = "center", fig.pos = "H") # hide code and messages in the pdf, centre figures at the page width and hold each figure exactly where it is called, inside its own section
 if(!require("pacman")) install.packages("pacman") # make sure the package loader is available
 pacman::p_load(tidyverse, lubridate, xts, tbl2xts, PerformanceAnalytics, RcppRoll, fmxdat, rmsfuns, glue) # load the packages used throughout this question
 options(dplyr.summarise.inform = F) # stop summarise from printing grouping messages
@@ -140,7 +140,7 @@ Q4_Strategies <- list(`Constrained equal weight` = Opt_Equal, `Minimum variance`
 Q4_Weights <- Rebalance_Calc(Asset_Rets, Q4_Meta, Rebal_Dates, Q4_Strategies, Cor_Shrink = 0.25, Mu_Shrink = 0.5) # weights on every quarter end
 Q4_Frontiers <- Frontier_Path_Calc(Asset_Rets, Q4_Meta, Rebal_Dates) # frontiers on every quarter end
 Fr_Now <- Q4_Frontiers$Frontiers %>% filter(date == max(date)) %>% group_by(Frontier) %>% summarise(Min_Vol = min(Vol), .groups = "drop") # lowest volatility on each latest frontier
-Risk_Facts <- Q4_Weights %>% filter(date == max(date)) %>% group_by(Strategy) %>% summarise(Bond_Cap = sum(Weight[Class == "Bonds"]), Bond_Risk = sum(Risk_Share[Class == "Bonds"]), Top_Risk = max(Risk_Share), .groups = "drop") # capital and risk by class
+Risk_Facts <- Q4_Weights %>% group_by(Strategy, date) %>% summarise(Bond_Cap = sum(Weight[Class == "Bonds"]), Bond_Risk = sum(Risk_Share[Class == "Bonds"]), Top_Risk = max(Risk_Share), .groups = "drop") %>% group_by(Strategy) %>% summarise(across(c(Bond_Cap, Bond_Risk, Top_Risk), mean), .groups = "drop") # capital and risk by class, averaged over all rebalance dates
 Q4_BT <- Backtest_Calc(Asset_Rets, Q4_Weights) # portfolio returns and turnover
 Q4_Stats <- Strategy_Stats_Calc(Q4_BT, Q4_Weights) # summary statistics of each rule
 Q4_Sub <- Q4_BT$Returns %>% mutate(Period = ifelse(date < lubridate::ymd(20230101), "2020-2022", "2023-2026")) %>% group_by(Period, Strategy) %>% summarise(Ret = prod(1 + Returns)^(12 / n()) - 1, .groups = "drop") %>% mutate(Key = paste(Strategy, Period)) # returns in the stressed and calm sub-periods
@@ -188,17 +188,21 @@ At each quarter end from December 2019, the covariance matrix and expected retur
 
 Figure \ref{fig:frontier} shows the cost of the mandate. The least volatile long-only portfolio has an expected volatility of `r Fact_Pull(Fr_Now, "Long only, no other limits", "Min_Vol", Key_Col = "Frontier", Pct = 0.1)`, while the bond and global limits push the least volatile mandate portfolio up to `r Fact_Pull(Fr_Now, "Within the mandate", "Min_Vol", Key_Col = "Frontier", Pct = 0.1)`. Minimum variance sits at the lowest point of the mandate frontier and maximum Sharpe on its upper section, while risk parity and equal weight sit just inside it.
 
-```{r frontier, fig.width = 11, fig.height = 6.2, fig.cap = "Efficient frontiers, assets and the four portfolios on the latest rebalance date"}
-Plot_Frontier_Galaxy(Q4_Frontiers, Q4_Weights, Q4_Pal, Highlight = "Risk parity", Title = "The Efficient Frontier Within the Mandate", Subtitle = "The mandate removes the lowest risk portfolios, and the frontier has shifted up as the universe grew", Caption = "Note:\nBubbles are sized by the risk parity weight. Faint lines are earlier mandate frontiers. Calculation own.") # the frontier galaxy
+```{r frontier, fig.width = 11, fig.height = 6.2, fig.cap = "Efficient frontiers within the mandate and under the long-only condition alone, June 2026"}
+Plot_Efficient_Frontier(Q4_Frontiers, Q4_Weights, Q4_Pal, Title = "The Efficient Frontier, June 2026", Subtitle = "The mandate removes the lowest risk portfolios and caps the highest return ones", Caption = "Note:\nExpected values from the shrunk estimates on the latest rebalance date. Calculation own.") # the efficient frontiers
 ```
 
 ## Capital and Risk
 
-Figure \ref{fig:stream} contrasts where each portfolio's capital sits with where its risk comes from. Bonds take `r Fact_Pull(Risk_Facts, "Risk parity", "Bond_Cap", Key_Col = "Strategy", Pct = 1)` of the risk parity portfolio but contribute only `r Fact_Pull(Risk_Facts, "Risk parity", "Bond_Risk", Key_Col = "Strategy", Pct = 1)` of its risk, since the bond limit stops it from balancing risk fully. Figure \ref{fig:treemap} shows the latest weights, where risk parity spreads its capital widely and maximum Sharpe concentrates in United States equity, inflation linked bonds and gold, each at its cap.
+Figure \ref{fig:capitalrisk} contrasts where each portfolio's capital sits with where its risk comes from, on average across all rebalance dates. Bonds take `r Fact_Pull(Risk_Facts, "Risk parity", "Bond_Cap", Key_Col = "Strategy", Pct = 1)` of the risk parity portfolio but contribute only `r Fact_Pull(Risk_Facts, "Risk parity", "Bond_Risk", Key_Col = "Strategy", Pct = 1)` of its risk, since the bond limit stops it from balancing risk fully.
 
-```{r stream, fig.width = 12, fig.height = 6.6, fig.cap = "Capital weights above and risk shares below, through time"}
-Plot_Capital_Risk_Stream(Q4_Weights, Q4_Pal, Title = "Capital and Risk Through Time", Subtitle = "Bonds take a quarter of every portfolio's capital but contribute only a sliver of its risk", Caption = "Note:\nRisk shares from each asset's contribution to ex ante variance. Calculation own.") # the mirrored streams
+```{r capitalrisk, fig.width = 12, fig.height = 6, fig.cap = "Average shares of capital and of risk by asset family"}
+Plot_Capital_Risk_Bars(Q4_Weights, Q4_Pal, Title = "Where the Capital Sits and Where the Risk Comes From", Subtitle = "Bonds take a quarter of every portfolio's capital but contribute only a small share of its risk", Caption = "Note:\nRisk shares from each family's contribution to ex ante variance, averaged over all quarterly rebalances. Calculation own.") # paired capital and risk bars
 ```
+
+## The Latest Portfolios
+
+Figure \ref{fig:treemap} shows the latest weights, where risk parity spreads its capital widely and maximum Sharpe concentrates in United States equity, inflation linked bonds and gold, each at its cap.
 
 ```{r treemap, fig.width = 11, fig.height = 6.6, fig.cap = "Composition of the four portfolios on the latest rebalance date"}
 Plot_Weight_Treemap(Q4_Weights, Q4_Pal, Title = "Latest Portfolio Composition, June 2026", Subtitle = "Risk parity spreads its capital across almost every asset, while maximum Sharpe concentrates in a few", Caption = "Note:\nTile area in proportion to weight. Calculation own.") # the treemaps
@@ -212,17 +216,25 @@ Figure \ref{fig:radial} shows that the bond limit is used in full by every rule 
 Plot_Constraint_Radial(Q4_Weights, Q4_Pal, Title = "How Hard Each Rule Leans on the Mandate", Subtitle = "Every rule fills the bond limit, and all but risk parity also fill the global limit", Caption = "Note:\nAverage exposure as a share of each limit across all rebalance dates. Calculation own.") # the circular barplot
 ```
 
-## Backtest Performance
+## Growth and Drawdowns
 
-Figure \ref{fig:backtest} shows the backtest from January 2020 to September 2026. Maximum Sharpe returned `r SP("Maximum Sharpe")` a year, risk parity `r SP("Risk parity")`, minimum variance `r SP("Minimum variance")` and the equal weight baseline `r SP("Constrained equal weight")`, all with volatility between `r Pct_Text(min(Q4_Stats$Vol), 0.1)` and `r Pct_Text(max(Q4_Stats$Vol), 0.1)`. In the stressed years from 2020 to 2022, risk parity returned the most, at `r Fact_Pull(Q4_Sub, "Risk parity 2020-2022", "Ret", Key_Col = "Key", Pct = 0.1)` a year, and maximum Sharpe's lead comes entirely from the rally since 2023. Figures \ref{fig:raincloud} and \ref{fig:bump} show that the monthly return distributions are similar and that the ranking of the rules changes between regimes.
+Figure \ref{fig:backtest} shows the backtest from January 2020 to September 2026. Maximum Sharpe returned `r SP("Maximum Sharpe")` a year, risk parity `r SP("Risk parity")`, minimum variance `r SP("Minimum variance")` and the equal weight baseline `r SP("Constrained equal weight")`, all with volatility between `r Pct_Text(min(Q4_Stats$Vol), 0.1)` and `r Pct_Text(max(Q4_Stats$Vol), 0.1)`. In the stressed years from 2020 to 2022, risk parity returned the most, at `r Fact_Pull(Q4_Sub, "Risk parity 2020-2022", "Ret", Key_Col = "Key", Pct = 0.1)` a year, and maximum Sharpe's lead comes entirely from the rally since 2023.
 
 ```{r backtest, fig.width = 11, fig.height = 5.4, fig.cap = "Growth of one unit and drawdowns of the four portfolios"}
 Plot_Growth_Underwater(Q4_BT$Returns, Q4_Pal, Title = "Growth and Drawdowns of the Four Portfolios", Subtitle = "All four rules recovered quickly from the Covid crash, and maximum Sharpe pulled ahead in the rally from 2023", Caption = "Note:\nWeights drift between quarterly rebalances. Calculation own.") # growth and underwater chart
 ```
 
+## Monthly Return Distributions
+
+Figure \ref{fig:raincloud} shows the full distribution of monthly returns for each rule. The four shapes are close, as all rules face the same tight limits, and the average of the worst five percent of months ranges only from `r Pct_Text(min(Q4_Stats$CVaR), 0.1)` to `r Pct_Text(max(Q4_Stats$CVaR), 0.1)`. March 2020 was the worst month for every rule.
+
 ```{r raincloud, fig.width = 11, fig.height = 5.6, fig.cap = "Distributions of monthly returns"}
 Plot_Return_Raincloud(Q4_BT$Returns, Q4_Pal, Title = "Monthly Return Distributions", Subtitle = "The four rules share a similar shape, with March 2020 the worst month for every one of them", Caption = "Note:\nHalf densities, boxplots and individual months. Calculation own.") # rainclouds
 ```
+
+## Calendar Year Rankings
+
+Figure \ref{fig:bump} ranks the rules by calendar year return. Risk parity ranked first in 2021 and 2022, including the 2022 sell-off in which bonds and equities fell together, while maximum Sharpe ranked last in 2022 and first in every year since. No rule leads in every environment.
 
 ```{r bump, fig.width = 11, fig.height = 5, fig.cap = "Ranking of the four portfolios by calendar year return"}
 Plot_Rank_Bump(Q4_BT$Returns, Q4_Pal, Title = "Calendar Year Rankings", Subtitle = "Risk parity led in 2021 and 2022, and maximum Sharpe has led every year since", Caption = "Note:\nEach year's return inside its point. * Year to September 2026. Calculation own.") # the bump chart

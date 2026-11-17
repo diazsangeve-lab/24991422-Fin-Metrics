@@ -7,13 +7,12 @@ Plot_Growth_Underwater <- function(Rets, Pal, Title = "Growth and Drawdowns of t
 
     g1 <-
         D %>%
-        mutate(Above = Strategy %in% c("Maximum Sharpe", "Risk parity"), Hj = case_when(Strategy == "Maximum Sharpe" ~ 0.8, Strategy == "Constrained equal weight" ~ 0.8, TRUE ~ 0.97)) %>% # which labels sit above their line and where along it, chosen where the lines separate
-        ggplot(aes(date, Growth, color = Strategy, label = Strategy, hjust = Hj)) + # dates along the bottom and wealth up the side
+        ggplot(aes(date, Growth, color = Strategy)) + # dates along the bottom and wealth up the side
         geom_hline(yintercept = 1, color = "grey50", linetype = "dashed") + # the starting value
-        geomtextpath::geom_textline(data = ~filter(., Above), linewidth = 1.1, size = fmxdat::ggpts(8.5), fontface = "bold", vjust = -0.35, text_smoothing = 50) + # the upper rules with their names above the line
-        geomtextpath::geom_textline(data = ~filter(., !Above), linewidth = 1.1, size = fmxdat::ggpts(8.5), fontface = "bold", vjust = 1.35, text_smoothing = 50) + # the lower rules with their names below the line
-        scale_color_manual(values = Pal$Strategy, guide = "none") + # the rule colours
-        scale_x_date(date_breaks = "1 year", date_labels = "%Y") + # yearly labels
+        geom_line(linewidth = 1.1) + # each rule's path
+        ggrepel::geom_text_repel(data = ~filter(., date == max(date)), aes(label = glue::glue("{Strategy} ({sprintf('%.2f', Growth)})")), hjust = 0, nudge_x = 60, direction = "y", fontface = "bold", size = fmxdat::ggpts(8.5), segment.color = NA, seed = 1) + # each rule's name and final value at the end of its line, pushed apart so the labels never overlap
+        scale_color_manual(values = Darken_Col(Pal$Strategy, 0.1), guide = "none") + # the rule colours, slightly darkened for the labels
+        scale_x_date(breaks = seq(lubridate::floor_date(min(D$date), "year"), max(D$date), by = "1 year"), date_labels = "%Y", expand = expansion(mult = c(0.02, 0.22))) + # yearly labels with room on the right
         fmxdat::theme_fmx(title.size = fmxdat::ggpts(24), subtitle.size = fmxdat::ggpts(20)) + # the clean course theme
         theme(axis.text.x = element_blank()) + # the panel below carries the dates
         labs(x = "", y = "Growth of one unit") # axis names
@@ -25,7 +24,7 @@ Plot_Growth_Underwater <- function(Rets, Pal, Title = "Growth and Drawdowns of t
         scale_color_manual(values = Pal$Strategy, guide = "none") + # the rule colours
         scale_fill_manual(values = Pal$Strategy, guide = "none") + # the same colours for the fills
         scale_y_continuous(labels = scales::percent_format(accuracy = 1)) + # drawdowns as percentages
-        scale_x_date(date_breaks = "1 year", date_labels = "%Y") + # yearly labels
+        scale_x_date(breaks = seq(lubridate::floor_date(min(D$date), "year"), max(D$date), by = "1 year"), date_labels = "%Y", expand = expansion(mult = c(0.02, 0.22))) + # the same dates as the panel above
         fmxdat::theme_fmx(title.size = fmxdat::ggpts(24), subtitle.size = fmxdat::ggpts(20)) + # the clean course theme
         labs(x = "", y = "Below previous peak") # axis names
 

@@ -19,7 +19,7 @@ gc() # garbage collection, which hands memory back to the operating system after
 
     ##          used (Mb) gc trigger (Mb) limit (Mb) max used (Mb)
     ## Ncells 502242 26.9    1077057 57.6         NA   715840 38.3
-    ## Vcells 981085  7.5    8388608 64.0      16384  2011380 15.4
+    ## Vcells 981081  7.5    8388608 64.0      16384  2011380 15.4
 
 ``` r
 library(tidyverse) # load the tidyverse for data wrangling and plotting
@@ -1917,20 +1917,19 @@ date.
 
 ## The Efficient Frontier and the Cost of the Mandate
 
-The frontier view shows what the mandate costs. The solid line is the
-efficient frontier within the mandate on the latest rebalance date, the
-dashed line is the frontier with only the long-only condition, and the
-faint lines are the mandate frontiers on every earlier quarter end. Each
-asset is a bubble sized by its weight in the risk parity portfolio, and
-the four rules are marked as diamonds.
+The frontier view shows what the mandate costs. On the latest rebalance
+date, the solid line is the efficient frontier within the mandate and
+the dashed line is the frontier with only the long-only condition. Each
+asset is marked by its family colour, and the four rules are marked as
+diamonds.
 
 ``` r
 Q4_Frontiers <- Frontier_Path_Calc(Asset_Rets, Q4_Meta, Rebal_Dates, Est_Start = lubridate::ymd(20100101), Min_Months = 60) # the frontiers and asset positions on every rebalance date
 Fr_Now <- Q4_Frontiers$Frontiers %>% filter(date == max(date)) %>% group_by(Frontier) %>% summarise(Min_Vol = min(Vol), Max_Ret = max(Ret), .groups = "drop") # the lowest volatility and highest return on each latest frontier
-Plot_Frontier_Galaxy(Q4_Frontiers, Q4_Weights, Q4_Pal, Highlight = "Risk parity", # the frontier galaxy
-                     Title = "The Efficient Frontier Within the Mandate", # the plot title
-                     Subtitle = "The mandate removes the lowest risk portfolios, and the frontier has shifted up and to the right as the universe grew", # the main message
-                     Caption = "Note:\nExpected values from the shrunk estimates on the latest rebalance date. Faint lines are the mandate frontier on each earlier quarter end. Calculation own.") # the note under the plot
+Plot_Efficient_Frontier(Q4_Frontiers, Q4_Weights, Q4_Pal, # the efficient frontiers on the latest rebalance date
+                        Title = "The Efficient Frontier, June 2026", # the plot title
+                        Subtitle = "The mandate removes the lowest risk portfolios and caps the highest return ones", # the main message
+                        Caption = "Note:\nExpected values from the shrunk estimates on the latest rebalance date. Calculation own.") # the note under the plot
 ```
 
 ![](README_files/figure-markdown_github/q4_frontier-1.png)
@@ -1941,36 +1940,37 @@ condition, the least volatile portfolio has an expected volatility of
 bonds, but the 25 percent bond limit and the 60 percent global limit
 push the least volatile mandate portfolio up to 8.9 percent. The 35
 percent single asset cap also stops the frontier from reaching the high
-return end, where United States equity sits alone. Within the mandate,
-minimum variance sits at the lowest point of the frontier and maximum
-Sharpe on its upper section, while risk parity and the equal weight
-baseline sit just inside it, since neither uses expected returns.
+return end, where United States equity sits on its own. Within the
+mandate, minimum variance sits at the lowest point of the frontier and
+maximum Sharpe on its upper section, while risk parity and the equal
+weight baseline sit just inside it, since neither uses expected returns.
 
 ## Capital Versus Risk
 
 A portfolio’s weights describe where the money sits, while its risk
 contributions describe where its ups and downs come from, and the two
-can be very different. The mirrored streams below show each rule’s
-capital weights above the axis and its shares of risk below it, through
-every rebalance date.
+can be very different. The paired bars below show, for each rule, the
+share of capital in each family of assets next to that family’s share of
+portfolio risk, averaged over every rebalance date.
 
 ``` r
-Risk_Facts <- Q4_Weights %>% filter(date == max(date)) %>% group_by(Strategy) %>% summarise(Bond_Cap = sum(Weight[Class == "Bonds"]), Bond_Risk = sum(Risk_Share[Class == "Bonds"]), Eq_Cap = sum(Weight[Class == "Equity"]), Eq_Risk = sum(Risk_Share[Class == "Equity"]), Top_Risk = max(Risk_Share), Top_Asset = Asset[which.max(Risk_Share)], .groups = "drop") # capital and risk shares by class on the latest date
-Plot_Capital_Risk_Stream(Q4_Weights, Q4_Pal, # capital above and risk below for every rule
-                         Title = "Capital and Risk Through Time", # the plot title
-                         Subtitle = "Bonds take a quarter of every portfolio's capital but contribute only a sliver of its risk", # the main message
-                         Caption = "Note:\nRisk shares are each asset's weight times its marginal contribution to ex ante portfolio variance. Streams are smoothed between quarterly rebalances. Calculation own.") # the note under the plot
+Risk_Facts <- Q4_Weights %>% group_by(Strategy, date) %>% summarise(Bond_Cap = sum(Weight[Class == "Bonds"]), Bond_Risk = sum(Risk_Share[Class == "Bonds"]), Eq_Cap = sum(Weight[Class == "Equity"]), Eq_Risk = sum(Risk_Share[Class == "Equity"]), Top_Risk = max(Risk_Share), Top_Asset = Asset[which.max(Risk_Share)], .groups = "drop") %>% group_by(Strategy) %>% summarise(across(c(Bond_Cap, Bond_Risk, Eq_Cap, Eq_Risk, Top_Risk), mean), Top_Asset = names(which.max(table(Top_Asset))), .groups = "drop") # capital and risk shares by class, averaged over all rebalance dates
+Plot_Capital_Risk_Bars(Q4_Weights, Q4_Pal, # capital next to risk for every rule
+                       Title = "Where the Capital Sits and Where the Risk Comes From", # the plot title
+                       Subtitle = "Bonds take a quarter of every portfolio's capital but contribute only a small share of its risk", # the main message
+                       Caption = "Note:\nRisk shares are each family's weight times its marginal contribution to ex ante portfolio variance, averaged over all quarterly rebalances. Calculation own.") # the note under the plot
 ```
 
-![](README_files/figure-markdown_github/q4_stream-1.png)
+![](README_files/figure-markdown_github/q4_capital_risk-1.png)
 
-The mirror makes the central problem of a balanced fund visible. In the
-risk parity portfolio, bonds hold 25 percent of the capital but
+The bars make the central problem of a balanced fund visible. On average
+in the risk parity portfolio, bonds hold 25 percent of the capital but
 contribute only 10 percent of the risk, while equities hold 60 percent
 of the capital and contribute 78 percent of the risk. The 25 percent
 bond limit is what stops risk parity from balancing risk fully, since
 equal risk would require far more in bonds. Maximum Sharpe is the
-extreme case, with US equity alone contributing 48 percent of its risk.
+extreme case, with US equity alone contributing 48 percent of its risk
+on average.
 
 ## The Latest Portfolios
 

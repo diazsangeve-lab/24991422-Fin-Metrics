@@ -12,7 +12,7 @@ Plot_Size_RiskReturn <- function(Period_Stats, Fund_Cols = c(`Capped SWIX` = "bl
         geom_path(data = Background, aes(group = Other), color = "grey85", linewidth = 0.6) + # the paths of all indexes in grey, for comparison
         geom_path(aes(color = Name), arrow = arrow(length = unit(0.22, "cm"), type = "closed"), linewidth = 1) + # the highlighted index, with arrows in time order
         geom_point(aes(color = Name, size = MDD), alpha = 0.9) + # one point per sub-period, sized by the maximum drawdown
-        ggrepel::geom_text_repel(aes(label = Period, color = Name), size = fmxdat::ggpts(7.5), fontface = "bold", show.legend = FALSE, point.padding = 0.4) + # label each point with its sub-period
+        ggrepel::geom_label_repel(aes(label = Period), color = "grey15", fill = "white", label.size = 0, label.padding = 0.12, size = fmxdat::ggpts(7.5), fontface = "bold", show.legend = FALSE, point.padding = 0.6, box.padding = 0.5, min.segment.length = 0, seed = 1) + # label each point with its sub-period in dark text on a white box, kept clear of the points
         facet_wrap(~Name, nrow = 1) + # one panel per index
         scale_color_manual(values = Fund_Cols) + # a fixed colour per index
         scale_size_continuous(range = c(2, 7), labels = scales::percent_format(accuracy = 1)) + # larger points for deeper drawdowns

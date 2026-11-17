@@ -21,13 +21,13 @@ Plot_NIC <- function(df, Mark_Shock = 0.04, Title = "News Impact Curves", Subtit
         geom_vline(xintercept = c(-Mark_Shock, Mark_Shock), linetype = "dotted", color = "grey50") + # dotted guides at the marked shock sizes
         geom_line(aes(Shock, Vol, color = Name), linewidth = 1.2) + # the volatility response of each series
         geom_point(data = Marks, aes(Shock, Vol, color = Name), size = 2.5) + # mark the response to the chosen shock size
-        ggrepel::geom_text_repel(data = Marks, aes(Shock, Vol, label = scales::percent(Vol, accuracy = 0.1), color = Name), size = fmxdat::ggpts(8), fontface = "bold", direction = "y", nudge_x = 0.004, segment.color = NA) + # print the response next to each point, without overlaps
+        ggrepel::geom_label_repel(data = Marks, aes(Shock, Vol, label = scales::percent(Vol, accuracy = 0.1)), color = "grey15", fill = "white", label.size = 0, label.padding = 0.12, size = fmxdat::ggpts(8), fontface = "bold", direction = "y", nudge_x = 0.006, min.segment.length = 0, seed = 1) + # print the response next to each point, without overlaps
         geom_text(data = Ends, aes(Shock, Vol, label = Name, color = Name), hjust = 0, nudge_x = 0.002, size = fmxdat::ggpts(9), fontface = "bold") + # label each curve at its end instead of using a legend
         scale_x_continuous(labels = scales::percent_format(accuracy = 1), breaks = seq(-0.06, 0.06, 0.02), expand = expansion(mult = c(0.02, 0.45))) + # percentage axis with ticks only where there is data and room on the right for the labels
         scale_y_continuous(labels = scales::percent_format(accuracy = 1)) + # percentage axis
         guides(color = "none") + # the curves are labelled directly
         fmxdat::theme_fmx(title.size = fmxdat::ggpts(30), subtitle.size = fmxdat::ggpts(26), caption.size = fmxdat::ggpts(22), CustomCaption = T) + # the clean course theme with readable text sizes
-        fmxdat::fmx_cols() + # the crisp course colours
+        scale_color_manual(values = c("#1F3A6B", "#B5451B", "#1E7B3A")) + # dark, distinct colours that stay legible as text on white
         labs(x = "Size of yesterday's unexpected daily return", y = "Implied annualised volatility today", title = Title, subtitle = Subtitle, caption = Caption) # axis names, title and note
 
     fmxdat::finplot(g) # finishing touches

@@ -14,7 +14,7 @@ Plot_Cor_Chord <- function(R_Long, Pal, Est_Start = lubridate::ymd(20100101), Po
     Linked <- names(Pal$Asset)[rowSums(abs(Links)) > 0] # assets with at least one link, as the others cannot be drawn
     circlize::chordDiagram(abs(Links[Linked, Linked]), symmetric = TRUE, order = Linked, grid.col = Pal$Asset[Linked], col = Link_Col[Linked, Linked], transparency = 0, annotationTrack = "grid", preAllocateTracks = list(track.height = 0.25), link.border = NA) # the chord diagram, with link widths set by the strength of each correlation
     circlize::circos.trackPlotRegion(track.index = 1, panel.fun = function(x, y) { # label each asset around the outside
-        circlize::circos.text(circlize::CELL_META$xcenter, circlize::CELL_META$ylim[1] + 0.1, circlize::CELL_META$sector.index, facing = "clockwise", niceFacing = TRUE, adj = c(0, 0.5), cex = 0.62, font = 2, col = Pal$Asset[circlize::CELL_META$sector.index]) # the asset name in its own colour
+        circlize::circos.text(circlize::CELL_META$xcenter, circlize::CELL_META$ylim[1] + 0.1, circlize::CELL_META$sector.index, facing = "clockwise", niceFacing = TRUE, adj = c(0, 0.5), cex = 0.62, font = 2, col = Darken_Col(Pal$Asset[circlize::CELL_META$sector.index], 0.5)) # the asset name in a darkened version of its colour, which stays legible for the lighter shades
     }, bg.border = NA) # no border around the label track
     graphics::title(Title, cex.main = 1, font.main = 2, adj = 0) # the title at the top left
     graphics::legend("bottomleft", legend = c(glue::glue("Correlation above {Pos_Threshold}"), glue::glue("Correlation below {Neg_Threshold}")), fill = c("#2171B5", "firebrick"), border = NA, bty = "n", cex = 0.7) # explain the link colours

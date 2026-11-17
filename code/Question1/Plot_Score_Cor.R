@@ -14,7 +14,7 @@ Plot_Score_Cor <- function(df, Diag = NULL, Title = "Do the Scores Agree?", Subt
         geom_line(aes(date, Rho, color = Label), linewidth = 1, alpha = 0.9) + # the monthly rank correlation of each pair
         geom_text(data = Ends, aes(date, Rho, label = stringr::str_wrap(Label, 18), color = Label), hjust = -0.08, lineheight = 0.85, fontface = "bold", size = fmxdat::ggpts(7.5)) + # label each line at its end instead of using a legend
         scale_x_date(breaks = seq(lubridate::floor_date(min(df$date), "year"), max(df$date), by = "year"), date_labels = "%Y", expand = expansion(mult = c(0.01, 0.32))) + # one tick per year where there is data, and room on the right for the inline labels
-        fmxdat::fmx_cols() + # the crisp course colours
+        scale_color_manual(values = c("#1F3A6B", "#B5451B", "#1E7B3A")) + # dark, distinct colours that stay legible as text on white
         guides(color = "none") + # the lines are labelled directly
         fmxdat::theme_fmx(title.size = fmxdat::ggpts(30), subtitle.size = fmxdat::ggpts(26), caption.size = fmxdat::ggpts(22)) + # the clean course theme
         theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) + # vertical date labels

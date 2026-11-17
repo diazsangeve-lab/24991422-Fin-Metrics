@@ -40,12 +40,27 @@ The exam data was then downloaded from the course website and unzipped into the 
 ```{r packages}
 if(!require("pacman")) install.packages("pacman") # make sure the package loader itself is installed
 pacman::p_load(tidyverse, lubridate, xts, tbl2xts, PerformanceAnalytics, RcppRoll, fmxdat, rmsfuns, glue, gt, patchwork) # load the core packages that every question relies on, with xts attached because fmxdat::Safe_TE calls its functions directly
-Needed <- c("quadprog", "Rsolnp", "Matrix", "ggdist", "treemapify", "geomtextpath", "circlize", "ggrepel", "ggridges", "sandwich", "lmtest", "rugarch", "rmgarch") # packages that the functions only ever call with ::, so they are installed but not attached
+Needed <- c("quadprog", "Rsolnp", "Matrix", "ggdist", "treemapify", "geomtextpath", "circlize", "ggrepel", "ggridges", "sandwich", "lmtest", "rugarch", "rmgarch", "gganimate", "gifski") # packages that the functions only ever call with ::, so they are installed but not attached, including gganimate and its gif renderer for the two animations
 Missing <- setdiff(Needed, rownames(installed.packages())) # the ones not yet installed on this machine
 if(length(Missing) > 0) install.packages(Missing) # install only those
 options(dplyr.summarise.inform = F) # stop summarise from printing a grouping message every time it runs
 options(scipen = 999) # show numbers in full instead of scientific notation
 ```
+
+# The Local Market in Motion
+
+Before the questions, the animation below sets the scene. It traces the growth of one rand invested in the Capped SWIX and the three local size indexes from January 2015, drawing each line month by month. The race shows the themes that recur through this repository, namely the Covid crash of 2020, the long stretch in which the indexes moved together, and the separation of the size indexes in the rally that followed.
+
+```{r anim_top, results = "hide"}
+dir.create("README_files/animations", recursive = TRUE, showWarnings = FALSE) # a folder for the animations, next to the README's other figures
+Race_Monthly <- read_rds("data/Index_Returns_Daily.rds") %>% filter(Tickers %in% c("J433", "J200", "J201", "J202")) %>% mutate(Name = recode(Name, "Top 40" = "Large Caps", MidCaps = "Mid Caps", SmallCaps = "Small Caps")) %>% select(date, Name, Returns) %>% Monthly_Returns_Calc() # monthly returns of the benchmark and the size indexes
+Animate_Index_Race(Race_Monthly, File = "README_files/animations/index_race.gif", # the racing growth chart
+                   Cols = c(`Capped SWIX` = "black", `Large Caps` = "#B2182B", `Mid Caps` = "darkorange", `Small Caps` = "#4C78A8"), # one colour per index, matching question 2
+                   Title = "The Local Equity Market Since 2015", Subtitle = "Growth of one rand invested in January 2015,", # the title and the start of the subtitle, which ends with the current month
+                   Caption = "Note:\nMonthly total returns of the published indexes. Calculation own.") # the note under the animation
+```
+
+![](README_files/animations/index_race.gif)
 
 # Question 1, Exploring Risk and Uncertainty
 
@@ -908,32 +923,32 @@ Across `r length(Rebal_Dates)` rebalance dates and four rules, the largest breac
 
 ## The Efficient Frontier and the Cost of the Mandate
 
-The frontier view shows what the mandate costs. The solid line is the efficient frontier within the mandate on the latest rebalance date, the dashed line is the frontier with only the long-only condition, and the faint lines are the mandate frontiers on every earlier quarter end. Each asset is a bubble sized by its weight in the risk parity portfolio, and the four rules are marked as diamonds.
+The frontier view shows what the mandate costs. On the latest rebalance date, the solid line is the efficient frontier within the mandate and the dashed line is the frontier with only the long-only condition. Each asset is marked by its family colour, and the four rules are marked as diamonds.
 
 ```{r q4_frontier, fig.width = 11, fig.height = 7}
 Q4_Frontiers <- Frontier_Path_Calc(Asset_Rets, Q4_Meta, Rebal_Dates, Est_Start = lubridate::ymd(20100101), Min_Months = 60) # the frontiers and asset positions on every rebalance date
 Fr_Now <- Q4_Frontiers$Frontiers %>% filter(date == max(date)) %>% group_by(Frontier) %>% summarise(Min_Vol = min(Vol), Max_Ret = max(Ret), .groups = "drop") # the lowest volatility and highest return on each latest frontier
-Plot_Frontier_Galaxy(Q4_Frontiers, Q4_Weights, Q4_Pal, Highlight = "Risk parity", # the frontier galaxy
-                     Title = "The Efficient Frontier Within the Mandate", # the plot title
-                     Subtitle = "The mandate removes the lowest risk portfolios, and the frontier has shifted up and to the right as the universe grew", # the main message
-                     Caption = "Note:\nExpected values from the shrunk estimates on the latest rebalance date. Faint lines are the mandate frontier on each earlier quarter end. Calculation own.") # the note under the plot
+Plot_Efficient_Frontier(Q4_Frontiers, Q4_Weights, Q4_Pal, # the efficient frontiers on the latest rebalance date
+                        Title = "The Efficient Frontier, June 2026", # the plot title
+                        Subtitle = "The mandate removes the lowest risk portfolios and caps the highest return ones", # the main message
+                        Caption = "Note:\nExpected values from the shrunk estimates on the latest rebalance date. Calculation own.") # the note under the plot
 ```
 
-The mandate binds most at the low risk end. With only the long-only condition, the least volatile portfolio has an expected volatility of `r Fact_Pull(Fr_Now, "Long only, no other limits", "Min_Vol", Key_Col = "Frontier", Pct = 0.1)`, built mostly from bonds and led by local inflation linked bonds, but the 25 percent bond limit and the 60 percent global limit push the least volatile mandate portfolio up to `r Fact_Pull(Fr_Now, "Within the mandate", "Min_Vol", Key_Col = "Frontier", Pct = 0.1)`. The 35 percent single asset cap also stops the frontier from reaching the high return end, where United States equity sits alone. Within the mandate, minimum variance sits at the lowest point of the frontier and maximum Sharpe on its upper section, while risk parity and the equal weight baseline sit just inside it, since neither uses expected returns.
+The mandate binds most at the low risk end. With only the long-only condition, the least volatile portfolio has an expected volatility of `r Fact_Pull(Fr_Now, "Long only, no other limits", "Min_Vol", Key_Col = "Frontier", Pct = 0.1)`, built mostly from bonds and led by local inflation linked bonds, but the 25 percent bond limit and the 60 percent global limit push the least volatile mandate portfolio up to `r Fact_Pull(Fr_Now, "Within the mandate", "Min_Vol", Key_Col = "Frontier", Pct = 0.1)`. The 35 percent single asset cap also stops the frontier from reaching the high return end, where United States equity sits on its own. Within the mandate, minimum variance sits at the lowest point of the frontier and maximum Sharpe on its upper section, while risk parity and the equal weight baseline sit just inside it, since neither uses expected returns.
 
 ## Capital Versus Risk
 
-A portfolio's weights describe where the money sits, while its risk contributions describe where its ups and downs come from, and the two can be very different. The mirrored streams below show each rule's capital weights above the axis and its shares of risk below it, through every rebalance date.
+A portfolio's weights describe where the money sits, while its risk contributions describe where its ups and downs come from, and the two can be very different. The paired bars below show, for each rule, the share of capital in each family of assets next to that family's share of portfolio risk, averaged over every rebalance date.
 
-```{r q4_stream, fig.width = 12, fig.height = 7.5}
-Risk_Facts <- Q4_Weights %>% filter(date == max(date)) %>% group_by(Strategy) %>% summarise(Bond_Cap = sum(Weight[Class == "Bonds"]), Bond_Risk = sum(Risk_Share[Class == "Bonds"]), Eq_Cap = sum(Weight[Class == "Equity"]), Eq_Risk = sum(Risk_Share[Class == "Equity"]), Top_Risk = max(Risk_Share), Top_Asset = Asset[which.max(Risk_Share)], .groups = "drop") # capital and risk shares by class on the latest date
-Plot_Capital_Risk_Stream(Q4_Weights, Q4_Pal, # capital above and risk below for every rule
-                         Title = "Capital and Risk Through Time", # the plot title
-                         Subtitle = "Bonds take a quarter of every portfolio's capital but contribute only a sliver of its risk", # the main message
-                         Caption = "Note:\nRisk shares are each asset's weight times its marginal contribution to ex ante portfolio variance. Streams are smoothed between quarterly rebalances. Calculation own.") # the note under the plot
+```{r q4_capital_risk, fig.width = 12, fig.height = 6.5}
+Risk_Facts <- Q4_Weights %>% group_by(Strategy, date) %>% summarise(Bond_Cap = sum(Weight[Class == "Bonds"]), Bond_Risk = sum(Risk_Share[Class == "Bonds"]), Eq_Cap = sum(Weight[Class == "Equity"]), Eq_Risk = sum(Risk_Share[Class == "Equity"]), Top_Risk = max(Risk_Share), Top_Asset = Asset[which.max(Risk_Share)], .groups = "drop") %>% group_by(Strategy) %>% summarise(across(c(Bond_Cap, Bond_Risk, Eq_Cap, Eq_Risk, Top_Risk), mean), Top_Asset = names(which.max(table(Top_Asset))), .groups = "drop") # capital and risk shares by class, averaged over all rebalance dates
+Plot_Capital_Risk_Bars(Q4_Weights, Q4_Pal, # capital next to risk for every rule
+                       Title = "Where the Capital Sits and Where the Risk Comes From", # the plot title
+                       Subtitle = "Bonds take a quarter of every portfolio's capital but contribute only a small share of its risk", # the main message
+                       Caption = "Note:\nRisk shares are each family's weight times its marginal contribution to ex ante portfolio variance, averaged over all quarterly rebalances. Calculation own.") # the note under the plot
 ```
 
-The mirror makes the central problem of a balanced fund visible. In the risk parity portfolio, bonds hold `r Fact_Pull(Risk_Facts, "Risk parity", "Bond_Cap", Key_Col = "Strategy", Pct = 1)` of the capital but contribute only `r Fact_Pull(Risk_Facts, "Risk parity", "Bond_Risk", Key_Col = "Strategy", Pct = 1)` of the risk, while equities hold `r Fact_Pull(Risk_Facts, "Risk parity", "Eq_Cap", Key_Col = "Strategy", Pct = 1)` of the capital and contribute `r Fact_Pull(Risk_Facts, "Risk parity", "Eq_Risk", Key_Col = "Strategy", Pct = 1)` of the risk. The 25 percent bond limit is what stops risk parity from balancing risk fully, since equal risk would require far more in bonds. Maximum Sharpe is the extreme case, with `r Fact_Pull(Risk_Facts, "Maximum Sharpe", "Top_Asset", Key_Col = "Strategy")` alone contributing `r Fact_Pull(Risk_Facts, "Maximum Sharpe", "Top_Risk", Key_Col = "Strategy", Pct = 1)` of its risk.
+The bars make the central problem of a balanced fund visible. On average in the risk parity portfolio, bonds hold `r Fact_Pull(Risk_Facts, "Risk parity", "Bond_Cap", Key_Col = "Strategy", Pct = 1)` of the capital but contribute only `r Fact_Pull(Risk_Facts, "Risk parity", "Bond_Risk", Key_Col = "Strategy", Pct = 1)` of the risk, while equities hold `r Fact_Pull(Risk_Facts, "Risk parity", "Eq_Cap", Key_Col = "Strategy", Pct = 1)` of the capital and contribute `r Fact_Pull(Risk_Facts, "Risk parity", "Eq_Risk", Key_Col = "Strategy", Pct = 1)` of the risk. The 25 percent bond limit is what stops risk parity from balancing risk fully, since equal risk would require far more in bonds. Maximum Sharpe is the extreme case, with `r Fact_Pull(Risk_Facts, "Maximum Sharpe", "Top_Asset", Key_Col = "Strategy")` alone contributing `r Fact_Pull(Risk_Facts, "Maximum Sharpe", "Top_Risk", Key_Col = "Strategy", Pct = 1)` of its risk on average.
 
 ## The Latest Portfolios
 
@@ -1027,3 +1042,14 @@ The ranking is robust to the estimation choices. With no correlation shrinkage, 
 
 A balanced fund that meets every condition of the mandate can be built from the universe provided, and four different rules all satisfy it on every quarterly rebalance from December 2019. The mandate shapes the result more than the choice of rule. The 25 percent bond limit binds for every rule and stops any of them from balancing risk fully, the 60 percent global limit binds for most, and the equity limit never binds, since filling the bond and commodity limits leaves equities near 60 percent. Within those limits, constrained risk parity offers the most balanced combination of return, diversification and low turnover, without relying on expected returns, and it held up best in the stressed years of 2020 to 2022. Its main weakness is that bonds still contribute only a small share of its risk, so the fund remains an equity-driven portfolio, and offshore returns are measured in dollars, which means a live fund would also carry rand exposure that this backtest does not capture.
 
+# Closing Animation, the Frontier Through Time
+
+The final animation returns to Question 4 and plays the efficient frontier forward through every quarterly rebalance date from December 2019. The dashed frontier shows what a long-only investor could reach, the solid frontier what the mandate allows, and the diamonds show where the four portfolio rules sat on each date. The frontier rises and shifts as new assets qualify under the five year rule and as the estimation window lengthens, while the gap between the two frontiers, the cost of the mandate, persists throughout.
+
+```{r anim_end, results = "hide"}
+Animate_Frontier_Path(Q4_Frontiers, Q4_Weights, Q4_Pal, File = "README_files/animations/frontier_path.gif", # the moving frontier
+                      Title = "The Efficient Frontier Through Time", Subtitle = "Quarterly rebalance of", # the title and the start of the subtitle, which ends with the current date
+                      Caption = "Note:\nExpected values from the shrunk estimates on each rebalance date. Diamonds mark the four portfolio rules. Calculation own.") # the note under the animation
+```
+
+![](README_files/animations/frontier_path.gif)

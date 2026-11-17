@@ -21,8 +21,8 @@ Plot_Peer_Scorecard <- function(Stats, Fund_Label = "ABC Fund", Title = "ABC Fun
         geom_rect(data = tidyr::crossing(Bands, Label = D$Label), aes(xmin = xmin, xmax = xmax, ymin = as.numeric(Label) - 0.32, ymax = as.numeric(Label) + 0.32, fill = Shade)) + # the quartile bands for every measure
         scale_fill_identity() + # use the band colours as given
         geom_segment(aes(x = 0, xend = Beat, y = Label, yend = Label), color = "darkorange", linewidth = 5) + # a bar out to the share of peers beaten
-        geom_point(aes(Beat, Label), color = "darkorange3", size = 6) + # the end of each bar
-        geom_text(aes(Beat, Label, label = scales::percent(Beat, accuracy = 1)), color = "white", size = fmxdat::ggpts(7), fontface = "bold") + # the share inside the end point
+        geom_point(aes(Beat, Label), color = "#8C3B00", size = 10) + # the end of each bar, large enough to hold its label
+        geom_text(aes(Beat, Label, label = scales::percent(Beat, accuracy = 1)), color = "white", size = fmxdat::ggpts(8.5), fontface = "bold") + # the share inside the end point
         geom_text(aes(1.03, Label, label = Show), hjust = 0, size = fmxdat::ggpts(10)) + # the fund's value against the median peer
         geom_vline(xintercept = 0.5, linetype = "dashed", color = "grey40") + # the median peer
         annotate("text", x = 1.03, y = nrow(D) + 0.6, label = "ABC vs median peer", hjust = 0, fontface = "bold", size = fmxdat::ggpts(10)) + # header for the value column

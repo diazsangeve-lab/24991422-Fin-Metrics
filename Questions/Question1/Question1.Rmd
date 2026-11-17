@@ -103,7 +103,7 @@ abstract: |
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, fig.width = 9, fig.height = 5.5, out.width = "100%", fig.align = "center", fig.pos = "!htb") # hide code and messages in the pdf, centre figures at the page width and let LaTeX place each one at the top or bottom of a page so that no page is left half empty
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, fig.width = 9, fig.height = 5.5, out.width = "100%", fig.align = "center", fig.pos = "H") # hide code and messages in the pdf, centre figures at the page width and hold each figure exactly where it is called, inside its own section
 if(!require("pacman")) install.packages("pacman") # make sure the package loader is available
 pacman::p_load(tidyverse, lubridate, xts, tbl2xts, PerformanceAnalytics, RcppRoll, fmxdat, rmsfuns, glue) # load the packages used throughout this question
 options(dplyr.summarise.inform = F) # stop summarise from printing grouping messages
@@ -225,11 +225,15 @@ Plot_Fund_Capture(Stats_All, BM_Name = "Capped SWIX", Fund_Name = "SafeCore", Ti
 
 ## Sources of Portfolio Risk
 
-The fund's risk was decomposed on every quarter end into the contribution of each holding, using weights multiplied by marginal contributions to risk. Figure \ref{fig:butterfly} stacks each sector's share of capital above the axis and its share of risk below it. From the second half of 2025 the resources band swells below the axis while barely changing above it, and Figure \ref{fig:arrows} shows why. At the latest holdings date AngloGold Ashanti and Gold Fields carried `r Pct_Text(sum(Latest_Risk$Risk_Share[Latest_Risk$Tickers %in% c("ANG", "GFI")]))` of the fund's risk on `r Pct_Text(sum(Latest_Risk$Weight[Latest_Risk$Tickers %in% c("ANG", "GFI")]))` of its capital, so the fund's volatility had become largely a bet on the gold price.
+The fund's risk was decomposed on every quarter end into the contribution of each holding, using weights multiplied by marginal contributions to risk. Figure \ref{fig:butterfly} stacks each sector's share of capital above the axis and its share of risk below it. From the second half of 2025 the resources band swells below the axis while barely changing above it.
 
 ```{r butterfly, fig.height = 6, fig.cap = "SafeCore sector shares of capital and of risk"}
 Plot_Risk_vs_Weight(Risk_Contrib, Title = "SafeCore Sector Shares of Capital and of Risk", Subtitle = "Resources hold a third of the capital but have generated over half of the risk since late 2025", Caption = "Note:\nRisk shares from weight times marginal contribution to risk, using a trailing one year covariance matrix at each quarter end. Calculation own.") # the mirrored capital and risk chart
 ```
+
+## The Largest Contributors to Risk
+
+Figure \ref{fig:arrows} shows why the resources band swelled. At the latest holdings date AngloGold Ashanti and Gold Fields carried `r Pct_Text(sum(Latest_Risk$Risk_Share[Latest_Risk$Tickers %in% c("ANG", "GFI")]))` of the fund's risk on `r Pct_Text(sum(Latest_Risk$Weight[Latest_Risk$Tickers %in% c("ANG", "GFI")]))` of its capital, so the fund's volatility had become largely a bet on the gold price.
 
 ```{r arrows, fig.height = 5, fig.cap = "Largest contributors to SafeCore's volatility at the latest holdings date"}
 Plot_Top_Risk(Latest_Risk, Top_N = 12, Title = "Largest Contributors to SafeCore's Volatility", Subtitle = "Two gold miners carry 45 percent of the fund's risk on less than 20 percent of its capital", Caption = glue::glue("Note:\nEx ante fund volatility of {scales::percent(unique(Latest_Risk$Port_Vol), accuracy = 0.1)}. Calculation own.")) # arrows from capital to risk

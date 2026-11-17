@@ -6,7 +6,7 @@ output:
   powerpoint_presentation:
     slide_level: 2
     fig_width: 10
-    fig_height: 4.6
+    fig_height: 4.2
     reference_doc: template.pptx
 ---
 
@@ -63,6 +63,8 @@ These three points carry the case. Every figure in the deck compares ABC Fund wi
 
 ## Top `r round(100 * (1 - Min_Beat))` Percent of Peers on Every Measure
 
+ABC Fund sits in the top fifth of its peers on return, risk and market exposure at the same time, a combination few funds achieve.
+
 ```{r scorecard}
 Plot_Peer_Scorecard(Stats, Fund_Label = "ABC Fund", Title = glue::glue("ABC Fund Against {sum(Stats$Group == 'Peer')} Peers, 2015 to 2025"), Subtitle = NULL, Caption = "Note:\nPeers with at least three years of returns since 2015. Lower volatility, drawdown and beta count as better. Calculation own.") # the scorecard of percentile standings
 ```
@@ -72,6 +74,8 @@ Each bar shows the share of peers that ABC Fund beats on one measure, so a longe
 :::
 
 ## Most Peers Deliver Mostly Market Beta
+
+The typical active manager has carried a beta of `r sprintf('%.2f', Beta_Range[1])` to `r sprintf('%.2f', Beta_Range[2])` since 2019, while ABC Fund's has fallen to `r sprintf('%.2f', Beta_Latest$Fund)`.
 
 ```{r beta_box}
 Plot_Roll_Beta_Box(Roll_Betas, Fund_Label = "ABC Fund", Min_Months = 6, Title = "Rolling 3 Year Beta to the Capped SWIX", Subtitle = NULL, Caption = "Note:\nEach grey dot is one peer fund's beta over the preceding three years in one month. Boxes span the middle half of peers. Calculation own.") # boxplots of peer betas over the individual fund points
@@ -83,6 +87,8 @@ Beta measures how much a fund moves when the market moves. A beta of one means t
 
 ## ABC Fund Earns More With Less Market Exposure
 
+ABC Fund earned an alpha of `r Pct_Text(Fund_Stats$Alpha, 0.1)` a year with a beta of `r sprintf('%.2f', Fund_Stats$Beta)`, against `r Pct_Text(Peer_Med$Alpha, 0.1)` and `r sprintf('%.2f', Peer_Med$Beta)` for the typical peer.
+
 ```{r beta_alpha}
 Plot_Beta_Alpha(Stats, Fund_Label = "ABC Fund", Title = "Market Beta and Alpha, 2015 to 2025", Subtitle = NULL, Caption = "Note:\nAlpha is the annualised return left after removing each fund's market exposure, from a regression on the Capped SWIX. Calculation own.") # every fund's beta against its alpha
 ```
@@ -92,6 +98,8 @@ Each dot is a peer fund. Moving left means less market exposure, and moving up m
 :::
 
 ## ABC Fund Depends Far Less on the Market
+
+The market explains `r Pct_Text(Drv_Fund$Market)` of ABC Fund's return swings against `r Pct_Text(Drv_Peer$Market)` for the typical peer, and `r Pct_Text(Drv_Fund$Unique)` of its returns are its own.
 
 ```{r drivers}
 Plot_Return_Drivers(Drivers, Fund_Label = "ABC Fund", Title = "What Drives Each Fund's Returns, 2015 to 2025", Subtitle = NULL, Caption = "Note:\nShares of monthly return variance explained by the Capped SWIX, then by the median non-market return of the other peers. Calculation own.") # the sorted barcode of return drivers
@@ -103,6 +111,8 @@ Each thin bar is one fund, split into three parts. The dark blue part moves with
 
 ## Top Half of Peers in `r sum(Cal$Pct >= 0.5)` of `r nrow(Cal)` Calendar Years
 
+ABC Fund finished in the top half of its peers in `r sum(Cal$Pct >= 0.5)` of `r nrow(Cal)` calendar years, with its clearest lead through the Covid period.
+
 ```{r fan}
 Plot_Peer_Fan(Pct, Cal, Fund_Label = "ABC Fund", Title = "Rolling 3 Year Returns Against the Peer Group", Subtitle = NULL, Caption = "Note:\nBands span the middle half and middle 90 percent of peers. Tiles give the percentage of peers beaten each year.\n* Year to October 2025. Calculation own.") # the peer fan with the calendar year strip
 ```
@@ -112,6 +122,8 @@ The shaded bands show the range of peer returns over rolling three year periods,
 :::
 
 ## Dispersion Has Rewarded ABC Fund's Stock Picks
+
+In the most dispersed third of 12 month periods, ABC Fund's alpha averaged `r Pct_Text(DA_Terc$Fund[3], 0.1)` against `r Pct_Text(DA_Terc$Peer[3], 0.1)` for the typical peer.
 
 ```{r dispersion}
 Plot_Dispersion_Alpha(DA, Fund_Label = "ABC Fund", Title = "Market Dispersion and 12 Month Alpha", Subtitle = NULL, Caption = "Note:\nDispersion is the weighted spread of Capped SWIX constituent returns each month. Alpha removes each fund's market exposure. Calculation own.") # dispersion against trailing alpha

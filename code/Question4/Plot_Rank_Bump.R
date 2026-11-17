@@ -12,8 +12,8 @@ Plot_Rank_Bump <- function(Rets, Pal, Title = "Calendar Year Rankings", Subtitle
     ggplot() + # start the plot
         geom_path(data = Curves, aes(x, y, group = interaction(Strategy, Year), color = Strategy), linewidth = 3, alpha = 0.85, lineend = "round") + # the curves between years
         geom_point(data = Yr, aes(Year, Rank, color = Strategy), size = 11) + # one point per rule and year
-        geom_text(data = Yr, aes(Year, Rank, label = scales::percent(Ret, accuracy = 1)), color = "white", fontface = "bold", size = fmxdat::ggpts(7.5)) + # the year's return inside each point
-        geom_text(data = Ends, aes(Year + 0.32, Rank, label = Strategy, color = Strategy), hjust = 0, fontface = "bold", size = fmxdat::ggpts(9)) + # the rule's name at the right
+        geom_text(data = Yr, aes(Year, Rank, label = scales::percent(Ret, accuracy = 1)), color = Text_Contrast(Pal$Strategy[as.character(Yr$Strategy)], 0.5), fontface = "bold", size = fmxdat::ggpts(7.5)) + # the year's return inside each point, in black or white depending on the point colour
+        geom_text(data = Ends, aes(Year + 0.32, Rank, label = Strategy), color = Darken_Col(Pal$Strategy[as.character(Ends$Strategy)], 0.15), hjust = 0, fontface = "bold", size = fmxdat::ggpts(9)) + # the rule's name at the right, slightly darkened
         scale_y_reverse(breaks = 1:4, labels = c("1st", "2nd", "3rd", "4th")) + # first place at the top
         scale_x_continuous(breaks = unique(Yr$Year), labels = ifelse(unique(Yr$Year) == max(Yr$Year) & YTD, paste0(unique(Yr$Year), "*"), unique(Yr$Year)), expand = expansion(add = c(0.4, 1.9))) + # the years, with a star on an incomplete year
         scale_color_manual(values = Pal$Strategy, guide = "none") + # the rule colours

@@ -103,7 +103,7 @@ abstract: |
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, fig.width = 9, fig.height = 5.5, out.width = "100%", fig.align = "center", fig.pos = "!htbp") # hide code and messages in the pdf, centre figures at the page width and let LaTeX place each one at the top or bottom of a page, or on a page of figures, so that no page is left half empty
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, fig.width = 9, fig.height = 5.5, out.width = "100%", fig.align = "center", fig.pos = "H") # hide code and messages in the pdf, centre figures at the page width and hold each figure exactly where it is called, inside its own section
 if(!require("pacman")) install.packages("pacman") # make sure the package loader is available
 pacman::p_load(tidyverse, lubridate, xts, tbl2xts, PerformanceAnalytics, RcppRoll, fmxdat, rmsfuns, glue) # load the packages used throughout this question
 options(dplyr.summarise.inform = F) # stop summarise from printing grouping messages
@@ -208,13 +208,13 @@ Figure \ref{fig:riskreturn} shows that these averages hide large shifts. The sma
 Plot_Size_RiskReturn(Period_Stats, Title = "Risk and Return by Sub-Period", Subtitle = "Small caps moved from the worst to the best risk-return trade-off, while mid caps were hit hardest in 2020 to 2022", Caption = "Note:\nAnnualised from monthly returns of the published indexes. Point size shows the maximum drawdown. Calculation own.") # the path of each index through risk and return space
 ```
 
-```{r rolling, fig.height = 3.9, fig.cap = "Rolling three year annualised returns"}
-Plot_Size_Rolling(Size_Roll, Title = "Rolling 3 Year Annualised Returns", Subtitle = "Small caps have the widest range of outcomes and have led large caps for most of the period since 2022", Caption = "Note:\nRolling 36 month annualised returns of the published indexes. Blue shading marks months in which small caps beat large caps. Calculation own.") # rolling returns with the small-cap lead shaded
-```
-
 ## Rolling Returns
 
 The rolling three year returns in Figure \ref{fig:rolling} confirm that the small caps carry the widest range of outcomes, from `r Fact_Pull(Roll_Facts, "Small Caps", "Min", Pct = 0.1)` in `r format(Roll_Facts$Min_Date[Roll_Facts$Name == "Small Caps"], "%B %Y")` to `r Fact_Pull(Roll_Facts, "Small Caps", "Max", Pct = 0.1)` in `r format(Roll_Facts$Max_Date[Roll_Facts$Name == "Small Caps"], "%B %Y")`, while the worst three year return of the large caps was `r Fact_Pull(Roll_Facts, "Large Caps", "Min", Pct = 0.1)`. Small caps led large caps in `r Pct_Text(mean(Roll_Wide$"Small Caps" > Roll_Wide$"Large Caps", na.rm = TRUE))` of months, almost all from 2022 onwards, and the two have the least correlated rolling returns of any pair, at `r sprintf("%.2f", cor(Roll_Wide$"Small Caps", Roll_Wide$"Large Caps", use = "complete.obs"))`.
+
+```{r rolling, fig.height = 3.9, fig.cap = "Rolling three year annualised returns"}
+Plot_Size_Rolling(Size_Roll, Title = "Rolling 3 Year Annualised Returns", Subtitle = "Small caps have the widest range of outcomes and have led large caps for most of the period since 2022", Caption = "Note:\nRolling 36 month annualised returns of the published indexes. Blue shading marks months in which small caps beat large caps. Calculation own.") # rolling returns with the small-cap lead shaded
+```
 
 # Behaviour Across Market Regimes \label{Strat}
 
