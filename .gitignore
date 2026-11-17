@@ -1,0 +1,22 @@
+# Data must never be committed (exam instruction 4). This ignores every folder starting with "data".
+data*/
+**/data*/
+
+# R and RStudio session files
+.Rproj.user/
+**/.Rproj.user/
+.Rhistory
+**/.Rhistory
+.RData
+.Ruserdata
+
+# Mac clutter
+.DS_Store
+**/.DS_Store
+
+# knitr caches and LaTeX by-products
+*_cache/
+*.log
+*.aux
+*.out
+*.spl

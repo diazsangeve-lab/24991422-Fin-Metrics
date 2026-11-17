@@ -1,0 +1,21 @@
+---
+title: "ABC Fund: Peer Performance Insights"
+subtitle: "Question 3: Portfolio Return Comparison"
+author: "Diaz Sangeve (24991422)"
+output:
+  powerpoint_presentation:
+    slide_level: 2
+    fig_width: 10
+    fig_height: 5.5
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, dpi = 300) # hide code and messages on the slides and keep figures sharp
+if(!require("pacman")) install.packages("pacman") # make sure the package loader is available
+pacman::p_load(tidyverse, lubridate, tbl2xts, PerformanceAnalytics, RcppRoll, fmxdat, glue) # load the packages used throughout this question
+list.files("../../code/Question3/", full.names = T, recursive = T) %>% .[grepl(".R", .)] %>% as.list() %>% walk(~source(.)) # source every function written for this question from the root code folder
+```
+
+## Overview
+
+To be written.

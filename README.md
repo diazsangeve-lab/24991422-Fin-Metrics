@@ -1,0 +1,96 @@
+# Purpose
+
+This repository holds my answers to the 2026 Financial Econometrics
+practical exam, student number 24991422. This README is the document to
+read, because it walks through the code and the thinking behind every
+question in the order the paper asks them. The finished write-ups sit in
+the `Questions` folder, with one folder per question.
+
+The layout follows a simple rule. Every function I wrote lives in the
+`code` folder, split into one subfolder per question, and this README
+only calls those functions. The data lives in the `data` folder, which
+is deliberately left out of the repository through the `.gitignore`
+file.
+
+``` r
+rm(list = ls()) # clean the environment so that nothing old leaks into the results
+gc() # garbage collection, which hands memory back to the operating system after the clean
+```
+
+    ##          used (Mb) gc trigger (Mb) limit (Mb) max used (Mb)
+    ## Ncells 496748 26.6    1061391 56.7         NA   715777 38.3
+    ## Vcells 929721  7.1    8388608 64.0      16384  2011345 15.4
+
+``` r
+library(tidyverse) # load the tidyverse for data wrangling and plotting
+list.files('code/', full.names = T, recursive = T) %>% .[grepl('.R', .)] %>% as.list() %>% walk(~source(.)) # source every function saved in the code folder and its subfolders
+```
+
+# How this folder was built
+
+The root project was created with `fmxdat::make_project()`, and each
+question folder was created with Texevier. The chunk below records those
+calls for transparency. It is not evaluated, because the folders already
+exist.
+
+``` r
+fmxdat::make_project(Mac = TRUE) # build the root project with its code, data, bin and settings folders
+Texevier::create_template(directory = "Questions", template_name = "Question1", build_project = TRUE, open_project = FALSE) # pdf write-up folder for question 1
+Texevier::create_template(directory = "Questions", template_name = "Question2", build_project = TRUE, open_project = FALSE) # pdf write-up folder for question 2
+Texevier::create_template(directory = "Questions", template_name = "Question3", build_project = TRUE, open_project = FALSE) # folder for question 3, which is later knitted to PowerPoint slides
+Texevier::create_template(directory = "Questions", template_name = "Question4", build_project = TRUE, open_project = FALSE) # pdf write-up folder for question 4
+```
+
+The exam data was then downloaded from the course website and unzipped
+into the `data` folder.
+
+# Packages
+
+``` r
+if(!require("pacman")) install.packages("pacman") # make sure the package loader itself is installed
+pacman::p_load(tidyverse, lubridate, tbl2xts, PerformanceAnalytics, RcppRoll, fmxdat, rmsfuns, glue, gt) # load the core packages that every question relies on
+options(dplyr.summarise.inform = F) # stop summarise from printing a grouping message every time it runs
+options(scipen = 999) # show numbers in full instead of scientific notation
+```
+
+# Question 1: Exploring Risk and Uncertainty
+
+``` r
+Uncertainty_Indexes <- read_rds("data/Econ_Uncertainty_Indexes.rds") # economic policy uncertainty indexes and the MOVE bond volatility index
+Implied_Vol <- read_rds("data/Implied_Vol_Indexes.rds") # implied volatility indexes, namely the VIX, V2X and VXEEM
+Local_Index_Constituents <- read_rds("data/Index_Constituents.rds") # daily constituents, weights and returns for nine local indexes
+Idx_Daily <- read_rds("data/Index_Returns_Daily.rds") # daily returns for the local headline, size and factor indexes
+Stock_Returns <- read_rds("data/Stock_Returns_Daily.rds") # daily returns for every local stock
+Local_Cncy_Vol_Index <- read_rds("data/LCL_Currency_Vol_Index.rds") # the SAVIUSD index of rand volatility
+Gl_Cncy_Vol_Index <- read_rds("data/Global_Currency_Vol_Index.rds") # the JP Morgan global currency volatility index
+Commods <- read_rds("data/Commodities.rds") # total return indexes for the Bloomberg commodity index, gold and Brent oil
+SafeCore <- read_rds("data/SafeCore.rds") # monthly holdings and weights of the SafeCore fund
+Factor_Scores <- read_rds("data/Factor_Scores.rds") # third party factor scores per stock, where a lower value means a lower exposure
+```
+
+## Part A
+
+## Part B
+
+## Part C
+
+# Question 2: Mid, Small and Large Cap Indices
+
+``` r
+Size_Idx <- read_rds("data/Monthly_Index_Constituents.rds") # monthly constituents and weights for the Capped SWIX and the large, mid and small cap indexes
+```
+
+# Question 3: Portfolio Return Comparison
+
+``` r
+Active_Manager_Peers <- read_rds("data/Active_Managers.rds") # monthly returns for the active manager peer group
+ABC_Fund <- read_rds("data/ABC_Fund.rds") # monthly returns for the ABC fund
+```
+
+# Question 4: Portfolio Construction
+
+``` r
+MSCI <- read_rds("data/MSCI_Indexes.rds") # total return indexes for the MSCI global equity indexes
+Bond_Yields <- read_rds("data/Global_Bond_Yields.rds") # ten year government bond yields, which still need to be turned into a return series
+LCL_Yield_Proxies <- read_rds("data/Monthly_LCL_Yield_Indexes.rds") # monthly returns for the local bond, inflation linked bond and listed property indexes
+```
