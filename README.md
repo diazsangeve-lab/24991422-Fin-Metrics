@@ -19,7 +19,7 @@ gc() # garbage collection, which hands memory back to the operating system after
 
     ##          used (Mb) gc trigger (Mb) limit (Mb) max used (Mb)
     ## Ncells 502982 26.9    1079171 57.7         NA   715840 38.3
-    ## Vcells 990720  7.6    8388608 64.0      16384  2011380 15.4
+    ## Vcells 990267  7.6    8388608 64.0      16384  2011380 15.4
 
 ``` r
 library(tidyverse) # load the tidyverse for data wrangling and plotting
@@ -58,12 +58,12 @@ options(scipen = 999) # show numbers in full instead of scientific notation
 
 # The Local Market in Motion
 
-Before the questions, the animation below sets the scene. It traces the
-growth of one rand invested in the Capped SWIX and the three local size
-indexes from January 2015, drawing each line month by month. The race
-shows the themes that recur through this repository, namely the Covid
-crash of 2020, the long stretch in which the indexes moved together, and
-the separation of the size indexes in the rally that followed.
+The animation below traces the growth of one rand invested in the Capped
+SWIX and the three local size indexes from January 2015, drawing each
+line month by month. It shows the themes that recur through this
+repository, namely the Covid crash of 2020, the long stretch in which
+the indexes moved together, and the separation of the size indexes in
+the rally that followed.
 
 ``` r
 dir.create("README_files/animations", recursive = TRUE, showWarnings = FALSE) # a folder for the animations, next to the README's other figures
@@ -108,10 +108,7 @@ volatility responds to bad news, and uses a DCC model to test whether
 the local market has become more tightly linked to global markets.
 Finally, it stratifies the sample by global conditions to identify which
 external forces local volatility responds to, and which local segment
-holds up best when they strike. Several figures borrow their layout from
-the R Graph Gallery, including small multiples with greyed-out context,
-a time series heatmap, ridgelines, lollipops and a dumbbell chart, with
-each design chosen because it makes a specific comparison easier to see.
+holds up best when they strike.
 
 Three choices shape the analysis. The Capped SWIX (J433) serves as the
 local yardstick, since it is the fund’s benchmark in Part B and its
@@ -161,9 +158,9 @@ full sample level of 17.8 percent. The MSCI ACWI moved in the opposite
 direction, at 12.0 percent in 2026 against a full sample level of 14.1
 percent, while the MSCI Emerging Markets index rose to 25.2 percent. The
 rise in local volatility therefore resembles the emerging market
-experience far more closely than the global one. Small caps are a
-notable exception, with volatility of 12.0 percent in 2026 against 14.0
-percent over the full sample, which suggests that the turbulence was
+experience far more closely than the global one. Small caps are an
+exception, with volatility of 12.0 percent in 2026 against 14.0 percent
+over the full sample, which suggests that the turbulence was
 concentrated in the larger and more globally exposed shares of the Top
 40, where volatility reached 22.4 percent.
 
@@ -205,12 +202,12 @@ lasting shift to a higher level of local volatility.
 ### A Heatmap of Monthly Volatility
 
 The rolling measure shows when volatility rose, but not how unusual each
-month was by the standards of the whole sample. The heatmap below,
-modelled on the well-known vaccination heatmap, lays every month end to
-end with one row per index and colours each tile by that month’s
-annualised realised volatility. Major events are marked so that episodes
-can be matched across rows. The colour scale is capped at 40 percent so
-that the Covid months do not wash out the rest of the sample.
+month was by the standards of the whole sample. The heatmap below lays
+every month end to end with one row per index and colours each tile by
+that month’s annualised realised volatility. Major events are marked so
+that episodes can be matched across rows. The colour scale is capped at
+40 percent so that the Covid months do not wash out the rest of the
+sample.
 
 ``` r
 Monthly_Vol <- Monthly_Vol_Calc(All_Rets %>% filter(Name %in% Index_Order)) %>% mutate(Name = factor(Name, levels = Index_Order)) # realised volatility of each index in every calendar month
@@ -230,23 +227,22 @@ Cal_Facts <- Monthly_Vol %>% group_by(Name) %>% mutate(Rank = rank(-Vol)) %>% un
 
 The heatmap makes the reach of each episode clear. The US tariff
 announcements of April 2025 turned every row dark at once, which marks
-them as a genuinely global shock. The 2026 episode looks very different.
-March 2026 was the 4th most volatile month on the Capped SWIX since
-2015, at 31.9 percent, and the emerging market row stays dark into July
-2026, when volatility reached 34.9 percent, the 2nd highest in the
-sample. The global and small cap rows, however, stay pale throughout
-2026. The local episode was also shorter than its emerging market
-counterpart, since volatility on the Capped SWIX had already fallen to
-12.6 percent in July 2026, the month in which emerging market volatility
-peaked.
+them as a global shock. The 2026 episode looks very different. March
+2026 was the 4th most volatile month on the Capped SWIX since 2015, at
+31.9 percent, and the emerging market row stays dark into July 2026,
+when volatility reached 34.9 percent, the 2nd highest in the sample. The
+global and small cap rows, however, stay pale throughout 2026. The local
+episode was also shorter than its emerging market counterpart, since
+volatility on the Capped SWIX had already fallen to 12.6 percent in July
+2026, the month in which emerging market volatility peaked.
 
 ### Volatility Clustering in Daily Returns
 
 Before a GARCH model is fitted, the data should show the feature it is
-built to capture. Following the univariate volatility practical, the
-autocorrelation of daily returns is compared with the autocorrelation of
-squared returns for the local, global and emerging market indexes, with
-the Ljung-Box test over ten lags reported in each panel.
+built to capture. The autocorrelation of daily returns is compared with
+the autocorrelation of squared returns for the local, global and
+emerging market indexes, with the Ljung-Box test over ten lags reported
+in each panel.
 
 ``` r
 Acf_df <- Acf_Calc(All_Rets, Series = c("Capped SWIX", "MSCI_ACWI", "MSCI_EM"), Lags = 25) # autocorrelation of returns and squared returns, with the Ljung-Box test
@@ -284,7 +280,7 @@ GARCH, GJR, EGARCH and APARCH, each with an AR(1) mean equation and
 student t errors, and retains the model with the lowest AIC. The
 ridgeline plot then shows the full distribution of each index’s daily
 conditional volatility within every year, with a line at each year’s
-median, which reveals shifts in the whole distribution that a single
+median, which shows shifts in the whole distribution that a single
 average would hide.
 
 ``` r
@@ -319,12 +315,12 @@ realised volatility.
 
 The GARCH results establish that volatility responds asymmetrically to
 shocks, but not how strongly each market does so. The news impact curve
-from the univariate volatility practical answers this by tracing the
-volatility implied for today across a range of shocks to yesterday’s
-return, with the lagged variance held at its long run level. The curves
-below use the model selected for each index in the previous step and a
-common grid of shocks between minus and plus six percent, with the
-response to a 4 percent shock marked on each curve.
+answers this by tracing the volatility implied for today across a range
+of shocks to yesterday’s return, with the lagged variance held at its
+long run level. The curves below use the model selected for each index
+in the previous step and a common grid of shocks between minus and plus
+six percent, with the response to a 4 percent shock marked on each
+curve.
 
 ``` r
 Best_Models <- Garch_Sigma %>% distinct(Name, Model) # the model chosen by AIC for each index in the previous step
@@ -339,28 +335,25 @@ Plot_NIC(NIC_df, Mark_Shock = 0.04, # plot the three news impact curves together
 ![](README_files/figure-markdown_github/q1a_nic-1.png)
 
 All three curves rise far more steeply in the shaded bad news half than
-in the good news half, which confirms the leverage effect described in
-the theory slides. The local curve is, however, notably flatter. After
-an unexpected fall of 4 percent, implied local volatility rises to 23.9
-percent, against 26.4 percent for the global index and 32.1 percent for
-emerging markets. Measured as the response to a 4 percent fall relative
-to a 4 percent rise, the asymmetry is 1.55 locally against 2.87 globally
-and 1.93 for emerging markets. The local market therefore starts from a
-higher base level of volatility, at 14.6 percent against 9.6 percent
-globally when yesterday held no surprise, but reacts less violently to
-bad news. One plausible explanation is the large weight of rand hedge
-shares in the local index, whose rand value tends to be supported when
-the currency weakens during a sell-off, although this reading would need
-to be tested directly.
+in the good news half, which is consistent with the leverage effect. The
+local curve is, however, flatter. After an unexpected fall of 4 percent,
+implied local volatility rises to 23.9 percent, against 26.4 percent for
+the global index and 32.1 percent for emerging markets. Measured as the
+response to a 4 percent fall relative to a 4 percent rise, the asymmetry
+is 1.55 locally against 2.87 globally and 1.93 for emerging markets. The
+local market therefore starts from a higher base level of volatility, at
+14.6 percent against 9.6 percent globally when yesterday held no
+surprise, but reacts less violently to bad news. One plausible
+explanation is the large weight of rand hedge shares in the local index,
+whose rand value tends to be supported when the currency weakens during
+a sell-off, although this reading would need to be tested directly.
 
 ### Forecasting Volatility Forward
 
-A GARCH model also says how long a volatility episode should last.
-Following the forecasting section of the univariate volatility
-practical, the selected model for each index is used to forecast
-conditional volatility six months beyond the end of the sample, and the
-forecast is drawn next to the recent fitted path and the long run level
-to which it converges.
+A GARCH model also says how long a volatility episode should last. The
+selected model for each index is used to forecast conditional volatility
+six months beyond the end of the sample, and the forecast is drawn next
+to the recent fitted path and the long run level to which it converges.
 
 ``` r
 Garch_Fc <- Best_Models %>% pmap_df(~Garch_Forecast_Calc(All_Rets, Series = ..1, Model = ..2, N_Ahead = 126, Show_From = lubridate::ymd(20250101))) # recent fitted volatility and a six month forecast for each index, using the model selected above
@@ -393,14 +386,13 @@ The local market may become more tightly linked to them, so that global
 shocks pass through more fully, or it may simply be exposed to larger
 shocks in the markets it already moves with. The two carry different
 implications for a risk ballast, so the time-varying correlation between
-the Capped SWIX and the two MSCI indexes is estimated with the DCC model
-from the multivariate volatility practical. Weekly log returns are used
-because the Johannesburg and New York markets close at different times,
-which biases daily correlations downwards, and because log returns can
-be summed across the days of a week. The lollipop chart shows each
-month’s average correlation measured from the pair’s long run average,
-so that months of tighter co-movement point up in red and months of
-looser co-movement point down in blue.
+the Capped SWIX and the two MSCI indexes is estimated with a DCC model.
+Weekly log returns are used because the Johannesburg and New York
+markets close at different times, which biases daily correlations
+downwards, and because log returns can be summed across the days of a
+week. The lollipop chart shows each month’s average correlation measured
+from the pair’s long run average, so that months of tighter co-movement
+point up in red and months of looser co-movement point down in blue.
 
 ``` r
 Weekly_Rets <- Weekly_Returns_Calc(All_Rets %>% filter(Name %in% c("Capped SWIX", "MSCI_ACWI", "MSCI_EM"))) # weekly log returns, which sidestep the different closing times of Johannesburg and New York
@@ -414,35 +406,34 @@ Plot_DCC(DCC_df, # plot both correlation series as lollipops from their averages
 
 ![](README_files/figure-markdown_github/q1a_dcc-1.png)
 
-The correlations are remarkably stable, as the small size of most
-lollipops shows. The local index has averaged a correlation of 0.68 with
-the global index and 0.69 with emerging markets, and the fitted DCC
-parameters in the caption imply that correlations adjust only slowly to
-new shocks. The one clear break is the Covid crash, when the monthly
-correlation with the global index rose to 0.78. In 2026 the correlation
-with the global index averaged 0.68, essentially unchanged from its 2021
-to 2024 average of 0.68, while the correlation with emerging markets
-fell from 0.69 to 0.67 and reached 0.62 in August 2026, its lowest
-weekly reading since 2016. The rise in local volatility therefore did
-not come from a tighter link with offshore markets. It came instead from
-larger shocks to the emerging market and commodity complex to which the
-local market is exposed, and the run of blue lollipops in the second
-half of 2026 matches the heatmap, in which emerging market volatility
-kept rising after local volatility had settled.
+The correlations are stable, as the small size of most lollipops shows.
+The local index has averaged a correlation of 0.68 with the global index
+and 0.69 with emerging markets, and the fitted DCC parameters in the
+caption imply that correlations adjust only slowly to new shocks. The
+one clear break is the Covid crash, when the monthly correlation with
+the global index rose to 0.78. In 2026 the correlation with the global
+index averaged 0.68, almost unchanged from its 2021 to 2024 average of
+0.68, while the correlation with emerging markets fell from 0.69 to 0.67
+and reached 0.62 in August 2026, its lowest weekly reading since 2016.
+The rise in local volatility therefore did not come from a tighter link
+with offshore markets. It came instead from larger shocks to the
+emerging market and commodity complex to which the local market is
+exposed, and the run of blue lollipops in the second half of 2026
+matches the heatmap, in which emerging market volatility kept rising
+after local volatility had settled.
 
 ### Volatility Across Global Regimes
 
 The seminar attributed rising local volatility to oil price volatility
 and global policy uncertainty. This claim is tested by stratifying the
-sample, following the approach used for rand volatility in the Practical
-2 bonus. Each month is ranked by a state variable, and the top and
-bottom quintiles of months are labelled stressed and calm. The
-volatility of the Capped SWIX within those months is then compared with
-its full sample volatility. Five state variables are considered, namely
-US and emerging market implied volatility, rand volatility, the global
-economic policy uncertainty index, and the realised volatility of Brent
-oil. The dumbbell chart places each state’s calm and stressed readings
-on one line, with the gap between them in the column on the right.
+sample. Each month is ranked by a state variable, and the top and bottom
+quintiles of months are labelled stressed and calm. The volatility of
+the Capped SWIX within those months is then compared with its full
+sample volatility. Five state variables are considered, namely US and
+emerging market implied volatility, rand volatility, the global economic
+policy uncertainty index, and the realised volatility of Brent oil. The
+dumbbell chart places each state’s calm and stressed readings on one
+line, with the gap between them in the column on the right.
 
 ``` r
 State_Names <- c(VIX = "US implied volatility (VIX)", VXEEM = "EM implied volatility (VXEEM)", SAVIUSD = "Rand volatility (SAVIUSD)", EPUCGLCP = "Global policy uncertainty", Oil_Brent_Vol = "Brent oil volatility") # readable names for the state variables
@@ -476,11 +467,10 @@ such as oil prices or emerging market risk appetite.
 The final step turns from the causes of local volatility to the defences
 against it. The stratification is repeated for the Top 40, the Capped
 SWIX, mid caps and small caps, and the grid below draws each result as a
-bubble, in the spirit of Bertin’s valued points. Bubble size shows the
-annualised volatility of the index in those months, and colour shows
-that volatility relative to the index’s own full sample level. This
-shows which segment of the local market offers the most natural ballast
-when global stress arrives.
+bubble. Bubble size shows the annualised volatility of the index in
+those months, and colour shows that volatility relative to the index’s
+own full sample level. This shows which segment of the local market
+offers the best ballast when global stress arrives.
 
 ``` r
 Plot_Strat_Heatmap(Vol_Strat %>% mutate(Name = factor(Name, levels = c("Top 40", "Capped SWIX", "MidCaps", "SmallCaps"))), # order the indexes from largest to smallest companies
@@ -525,9 +515,9 @@ For a team considering a risk ballast in a local fund, the relevant
 threat is therefore a commodity and emerging market shock, more than a
 developed market sell-off, and a ballast calibrated only to developed
 market stress would have missed the 2026 episode. Within the local
-market, small caps offer the most natural ballast in absolute terms,
-subject to the liquidity caveat noted above. Part B examines whether
-SafeCore already holds such a ballast.
+market, small caps offer the best ballast in absolute terms, subject to
+the liquidity caveat noted above. Part B examines whether SafeCore
+already holds such a ballast.
 
 ## Part B, Volatility and Factor Exposures of SafeCore
 
@@ -539,25 +529,25 @@ analysis has three strands. The first compares the fund’s return and
 risk profile with that of the Capped SWIX, its historical benchmark,
 across the full sample, through time, and in the calm and stressed
 regimes identified in Part A. The second decomposes the fund’s
-volatility into the contribution of each sector and stock, using the
-marginal contribution approach from Practical 2. The third builds
-momentum and low volatility scores from price behaviour, tests them
-against the vendor’s scores, and then uses all of the scores to compare
-SafeCore’s factor exposures with those of the local strategy indexes.
+volatility into the contribution of each sector and stock, using
+marginal contributions to risk. The third builds momentum and low
+volatility scores from price behaviour, tests them against the vendor’s
+scores, and then uses all of the scores to compare SafeCore’s factor
+exposures with those of the local strategy indexes.
 
 ### Reconstructing the Fund and its Benchmark
 
 SafeCore is only provided as a set of monthly holdings, so its daily
-returns are rebuilt from the daily stock returns using the safe
-portfolio return function from the practicals, with weights drifting
-between month ends. Two data choices underpin this. The reported weights
-sum to less than one in 66 of the months since 2015, so they are
-rescaled to one on the assumption that the holdings represent the full
-equity book. A small number of daily stock returns are implausibly
-large, reaching 989 percent, and are capped at 25 percent, as was done
-in the PCA practical. The Capped SWIX is rebuilt from its own monthly
-constituents in exactly the same way, which ensures that any error
-introduced by the method affects the fund and its benchmark equally.
+returns are rebuilt from the daily stock returns using a portfolio
+return function that lets the weights drift between rebalances, with
+weights drifting between month ends. Two data choices underpin this. The
+reported weights sum to less than one in 66 of the months since 2015, so
+they are rescaled to one on the assumption that the holdings represent
+the full equity book. A small number of daily stock returns are
+implausibly large, reaching 989 percent, and are capped at 25 percent.
+The Capped SWIX is rebuilt from its own monthly constituents in exactly
+the same way, which ensures that any error introduced by the method
+affects the fund and its benchmark equally.
 
 ``` r
 SafeCore_Rets <- Holdings_Returns_Calc(SafeCore, Stock_Returns, Start_Date = lubridate::ymd(20150101), Ret_Cap = 0.25, Port_Name = "SafeCore") # daily returns of SafeCore rebuilt from its monthly holdings
@@ -582,16 +572,16 @@ SafeCore with its benchmark on a like for like basis.
 
 ### Return and Risk Profile
 
-The figure below sets out the return, risk and market capture measures
-from Practicals 1 and 2, calculated on monthly returns, over the full
-sample and since 2020. Panel A tracks the fund’s position in the
-up-market vs down-market capture space relative to the benchmark at
-(1.00, 1.00), where points below the diagonal line represent asymmetric
-alpha. Panel B contrasts annualised return, volatility, max drawdown and
-tail risk across both periods. The capture ratios use the arithmetic
-version of the PerformanceAnalytics calculation, because the default
-geometric version compounds every up or down month into a single return
-and overstates the ratio.
+The figure below sets out the return, risk and market capture measures,
+calculated on monthly returns, over the full sample and since 2020.
+Panel A tracks the fund’s position in the up-market vs down-market
+capture space relative to the benchmark at (1.00, 1.00), where points
+below the diagonal line represent asymmetric alpha. Panel B contrasts
+annualised return, volatility, max drawdown and tail risk across both
+periods. The capture ratios use the arithmetic version of the
+PerformanceAnalytics calculation, because the default geometric version
+compounds every up or down month into a single return and overstates the
+ratio.
 
 ``` r
 Stats_Full <- Fund_Stats_Table(Port_Daily, BM_Name = "Capped SWIX", Rf_df = STeFI) %>% mutate(Period = "2015-2026") # statistics over the full sample
@@ -625,11 +615,10 @@ information ratio has fallen to 0.27.
 ### Daily Tail Risk
 
 Volatility measures the typical size of moves, while a risk ballast is
-meant to protect against the bad days. Following the risk section of
-Practical 2, the one-day Value at Risk and Expected Shortfall at 95
-percent are estimated for the fund and its rebuilt benchmark by the
-historical, Gaussian and modified methods, and drawn on the distribution
-of daily returns.
+meant to protect against the bad days. The one-day Value at Risk and
+Expected Shortfall at 95 percent are estimated for the fund and its
+rebuilt benchmark by the historical, Gaussian and modified methods, and
+drawn on the distribution of daily returns.
 
 ``` r
 Tail_Risk <- VaR_ES_Calc(Port_Daily, p = 0.95) # daily VaR and ES of the fund and the benchmark by three methods
@@ -657,9 +646,8 @@ the fund offers no protection on its worst days.
 
 ### Calendar Year Returns
 
-Calendar year returns, a standard output of the portfolio analytics
-practical, show whether the fund’s outperformance is spread across the
-years or concentrated in a few.
+Calendar year returns show whether the fund’s outperformance is spread
+across the years or concentrated in a few.
 
 ``` r
 Cal_B <- Port_Daily %>% mutate(Year = lubridate::year(date)) %>% group_by(Name, Year) %>% summarise(Ret = prod(1 + Returns) - 1, .groups = "drop") %>% spread(Name, Ret) %>% mutate(Diff = SafeCore - `Capped SWIX`) # each year's return of the fund and benchmark and the gap between them
@@ -683,8 +671,7 @@ above.
 ### Rolling Volatility Relative to the Benchmark
 
 A full sample average can hide periods when the fund ran materially more
-or less risk than the benchmark. The figure below follows the gallery’s
-line chart with a filled intersection. The upper panel compares one year
+or less risk than the benchmark. The upper panel compares one year
 rolling volatility, shading the space between the two lines red where
 SafeCore was more volatile and blue where it was calmer, and the strip
 underneath isolates the gap itself.
@@ -705,9 +692,9 @@ days since the rolling window begins in 2016, by an average of 0.5
 percentage points, and it widened again from late 2025 as rolling
 volatility for both rose towards 20 percent. The only sustained blue
 stretch, in which SafeCore was calmer, came in 2017. The gap is small in
-absolute terms, but its persistence is telling, since a fund that
-managed volatility deliberately would be expected to sit below its
-benchmark at least some of the time.
+absolute terms, but it is persistent, and a fund that managed volatility
+deliberately would be expected to sit below its benchmark at least some
+of the time.
 
 A ballast should also earn its keep when markets are stressed, so the
 stratification from Part A is repeated for SafeCore and its benchmark.
@@ -727,13 +714,13 @@ not, which is the opposite of the profile the seminar recommended.
 The next question is where SafeCore’s volatility comes from. On each
 quarter end since 2015, the fund’s volatility is decomposed into the
 contribution of each holding, using the trailing year of daily returns.
-Following Practical 2, each stock’s contribution is its weight
-multiplied by its marginal contribution to risk, which captures both its
-own volatility and its covariance with the rest of the fund, so that the
-contributions sum exactly to the fund’s total volatility. The mirrored
-area chart below stacks each sector’s share of capital above the axis
-and its share of risk below it, so that any sector whose risk outgrows
-its capital shows up as a band that is thicker underneath than on top.
+Each stock’s contribution is its weight multiplied by its marginal
+contribution to risk, which captures both its own volatility and its
+covariance with the rest of the fund, so that the contributions sum
+exactly to the fund’s total volatility. The mirrored area chart below
+stacks each sector’s share of capital above the axis and its share of
+risk below it, so that any sector whose risk outgrows its capital shows
+up as a band that is thicker underneath than on top.
 
 ``` r
 Risk_Dates <- SafeCore %>% distinct(date) %>% filter(date >= lubridate::ymd(20151231), lubridate::month(date) %in% c(3, 6, 9, 12) | date == max(date)) %>% pull(date) # every quarter end since 2015, plus the latest holdings date
@@ -747,8 +734,8 @@ Plot_Risk_vs_Weight(Risk_Contrib, # sector shares of capital and of risk through
 
 ![](README_files/figure-markdown_github/q1b_risk-1.png)
 
-The chart reveals a sharp change in where the fund’s risk sits. Until
-2024 the two halves broadly mirror each other, with financials taking a
+The chart shows a sharp change in where the fund’s risk sits. Until 2024
+the two halves broadly mirror each other, with financials taking a
 somewhat larger share of risk than of capital, at 39 percent against 33
 percent at the end of 2024. From the second half of 2025 the red
 resources band swells below the axis while barely changing above it. At
@@ -968,12 +955,12 @@ and a varying momentum tilt, while its low volatility exposure moved
 either side of zero with no persistent sign. In 2026 the vendor momentum
 tilt rose to its highest level in the sample, averaging 0.26 against
 0.10 before 2025, as the fund’s gold miners rallied. Over the same
-months the vendor volatility sensitivity exposure turned clearly
-negative, at -0.11, meaning that the fund held stocks with more downside
-market exposure than the benchmark. The fund’s own low volatility
-exposure also turned slightly negative, at -0.06. These shifts are
-consistent with the risk decomposition, since they describe a fund whose
-largest positions had become its most volatile.
+months the vendor volatility sensitivity exposure turned negative, at
+-0.11, meaning that the fund held stocks with more downside market
+exposure than the benchmark. The fund’s own low volatility exposure also
+turned slightly negative, at -0.06. These shifts are consistent with the
+risk decomposition, since they describe a fund whose largest positions
+had become its most volatile.
 
 ### Conclusion to Part B
 
@@ -1017,23 +1004,22 @@ and finally relates both measures to global macro variables.
 The analysis uses the daily constituents and weights of the Capped SWIX,
 which start in August 2020 and so match the period the question asks
 about. Daily constituent returns above 50 percent in absolute value are
-winsorised, following the dispersion practical, since the file contains
-a handful of implausible values.
+winsorised, since the file contains a handful of implausible values.
 
 ### Cross-Sectional Volatility
 
-Dispersion is measured as in the Practical 2 bonus, as the
-cross-sectional volatility of each stock’s compounded return over a
-rolling 21 trading day window. The weighted version follows the formula
-in the paper, weighting each stock’s squared deviation from the index
-return by its index weight, while the unweighted version is the simple
-standard deviation across stocks. The weighted measure is preferred as
-the headline, because an active manager is measured against a
-cap-weighted benchmark. A large move in a heavyweight stock forces every
-manager into a large active bet whether they own the stock or not, while
-a large move in a stock that makes up 0.1 percent of the index barely
-matters. The unweighted measure is shown for comparison, since it gives
-the same voice to small and illiquid stocks whose returns are noisier.
+Dispersion is measured as the cross-sectional volatility of each stock’s
+compounded return over a rolling 21 trading day window. The weighted
+version follows the formula in the paper, weighting each stock’s squared
+deviation from the index return by its index weight, while the
+unweighted version is the simple standard deviation across stocks. The
+weighted measure is preferred as the headline, because an active manager
+is measured against a cap-weighted benchmark. A large move in a
+heavyweight stock forces every manager into a large active bet whether
+they own the stock or not, while a large move in a stock that makes up
+0.1 percent of the index barely matters. The unweighted measure is shown
+for comparison, since it gives the same voice to small and illiquid
+stocks whose returns are noisier.
 
 ``` r
 SWIX_Cons <- Local_Index_Constituents %>% filter(Index == "Capped SWIX") # daily constituents, weights and returns of the Capped SWIX
@@ -1070,11 +1056,11 @@ Correlation is measured over a rolling three month window at each month
 end for the 40 largest constituents, which make up the bulk of the
 index’s weight. Two versions are calculated. The first is the simple
 average of all pairwise correlations. The second is a cap-weighted
-implied correlation, built in the spirit of the CBOE implied correlation
-index, which finds the single correlation that, applied to every pair of
-stocks, reproduces the actual variance of the cap-weighted basket.
-Because it weights pairs by the size of the stocks involved, the gap
-between the two shows whether the largest stocks are moving together
+implied correlation, built along the lines of the CBOE implied
+correlation index, which finds the single correlation that, applied to
+every pair of stocks, reproduces the actual variance of the cap-weighted
+basket. Because it weights pairs by the size of the stocks involved, the
+gap between the two shows whether the largest stocks are moving together
 more or less than the average pair.
 
 ``` r
@@ -1091,14 +1077,14 @@ Plot_Avg_Corr(Corr, # plot both correlation measures
 
 The implied correlation ranged from 0.06 to 0.41 over the sample, with
 peaks in mid 2022 during global monetary tightening and in 2026. The
-2026 peak is the more striking of the two. The cap-weighted implied
-correlation averaged 0.30 in 2026 against 0.20 before it, and for most
-of 2026 it sat well above the simple pairwise average, which shows that
-the largest stocks in particular were moving as a block. That pattern is
-consistent with Part B, where the index’s heaviest resource names drove
-a growing share of risk. In mid 2025, by contrast, the implied
-correlation fell below 0.1, the most favourable environment for stock
-pickers in the sample.
+2026 peak is the larger of the two. The cap-weighted implied correlation
+averaged 0.30 in 2026 against 0.20 before it, and for most of 2026 it
+sat well above the simple pairwise average, which shows that the largest
+stocks in particular were moving as a block. That pattern is consistent
+with Part B, where the index’s heaviest resource names drove a growing
+share of risk. In mid 2025, by contrast, the implied correlation fell
+below 0.1, the most favourable environment for stock pickers in the
+sample.
 
 ### How Volatility and Correlation Combine
 
@@ -1131,13 +1117,13 @@ equity. The most efficient environment for stock picking came in mid
 
 ### The Strength of the Common Factor
 
-A principal component analysis, as in Practical 4, offers a second view
-of how strongly the largest stocks move together. At each month end the
-daily returns of the 40 largest constituents over the past six months
-are standardised, and the share of their total variance explained by the
-first three components is recorded. In a basket of equities the first
-component is essentially the common market factor, so its share is a
-direct measure of how much of stock risk is common.
+A principal component analysis offers a second view of how strongly the
+largest stocks move together. At each month end the daily returns of the
+40 largest constituents over the past six months are standardised, and
+the share of their total variance explained by the first three
+components is recorded. In a basket of equities the first component is
+close to the common market factor, so its share is a direct measure of
+how much of stock risk is common.
 
 ``` r
 Pca_Roll <- Rolling_PCA_Calc(SWIX_Cons, Month_Ends, Lookback = 126, Top_N = 40, Ret_Cap = 0.5) # the share of variance explained by the first three components at every month end
@@ -1168,11 +1154,11 @@ stock-specific component for managers to exploit.
 ### Opportunity and Active Manager Outcomes
 
 A wider opportunity set should allow skilled managers to separate from
-the pack, which is the claim tested in the Practical 2 bonus. The figure
-relates the trailing 12 month average of weighted dispersion to the
-spread of 12 month excess returns across South African active managers,
-and colours each month by the share of managers who beat the Capped SWIX
-over that year. The points are connected in time order.
+the rest. The figure relates the trailing 12 month average of weighted
+dispersion to the spread of 12 month excess returns across South African
+active managers, and colours each month by the share of managers who
+beat the Capped SWIX over that year. The points are connected in time
+order.
 
 ``` r
 Active_Managers <- read_rds("data/Active_Managers.rds") # monthly returns of the active manager universe
@@ -1210,11 +1196,10 @@ scarce and fees are a constant drag.
 
 ### Manager Outcomes by Dispersion Regime
 
-The Practical 2 bonus on the dispersion of active managers compares
-manager outcomes across dispersion regimes. Here the months are sorted
-into quintiles of trailing 12 month weighted dispersion, and the share
-of managers beating the benchmark and the spread of their excess returns
-are averaged within each quintile.
+Manager outcomes can also be compared across dispersion regimes. The
+months are sorted into quintiles of trailing 12 month weighted
+dispersion, and the share of managers beating the benchmark and the
+spread of their excess returns are averaged within each quintile.
 
 ``` r
 Regime_Facts <- Opportunity %>% tidyr::drop_na(Disp12, Share_Outperform, Mgr_Spread) %>% mutate(Q = ntile(Disp12, 5)) %>% group_by(Q) %>% summarise(Share = mean(Share_Outperform), Spread = mean(Mgr_Spread), .groups = "drop") # the averages in each dispersion quintile, used in the text
@@ -1318,11 +1303,11 @@ with no clear trend. Weighted dispersion has hovered around 8 to 9
 percent, punctuated by sharp spikes when heavyweight stocks made large
 idiosyncratic moves, and the most favourable environment for stock
 pickers came in mid 2025, when correlations fell below 0.1 and more than
-90 percent of stock risk was diversifiable. In 2026 the picture
-deteriorated in a subtle way. Stock volatility rose, but the largest
-stocks moved together more closely than at any point in the sample, so a
-larger share of the extra risk was common to the market and could not be
-avoided by stock selection.
+90 percent of stock risk was diversifiable. In 2026 conditions for stock
+picking deteriorated in a less obvious way. Stock volatility rose, but
+the largest stocks moved together more closely than at any point in the
+sample, so a larger share of the extra risk was common to the market and
+could not be avoided by stock selection.
 
 The macro evidence explains why. Oil and bond market volatility, the
 channels through which offshore shocks reach the local market, raise
@@ -1332,10 +1317,9 @@ parts of the question. The commodity and rate shocks that drove local
 volatility in Part A are the same forces that reduce the room for active
 management, and SafeCore’s concentration in gold miners in Part B left
 it exposed to exactly the kind of common, correlated risk that dominated
-2026. A risk ballast built from genuinely diversifying holdings would
-therefore have helped on both fronts, by lowering volatility and by
-preserving the fund’s ability to differ from the market when
-correlations rise.
+2026. A risk ballast built from diversifying holdings would therefore
+have helped on both fronts, by lowering volatility and by preserving the
+fund’s ability to differ from the market when correlations rise.
 
 # Question 2, Mid, Small and Large Cap Indices
 
@@ -1350,9 +1334,9 @@ departs from the benchmark. The daily stock returns, which start in
 January 2015, are then applied to those holdings to measure how volatile
 the constituents are and how much of that volatility survives once they
 are combined into an index. The published daily returns of the Top 40,
-Mid Cap and Small Cap indexes complete the picture of each index’s risk
-and return profile through rolling returns, a comparison across
-sub-periods and stratification by market conditions.
+Mid Cap and Small Cap indexes are used to measure each index’s risk and
+return profile through rolling returns, a comparison across sub-periods
+and stratification by market conditions.
 
 The section is ordered in three steps. It first establishes what each
 index holds, through sector exposure, stock concentration and active
@@ -1372,8 +1356,8 @@ Size_Hold <- Size_Holdings_Prep(Size_Idx) # readable index names, a label for mi
 
 The first trait is what each index is exposed to. The figure stacks the
 sector weights of every index through time, using the same sector
-colours as Question 1, so that each panel reads as the sector story of
-one index.
+colours as Question 1, so that each panel shows the sector mix of one
+index.
 
 ``` r
 Sector_Facts <- Size_Hold %>% filter(date %in% c(min(date), max(date))) %>% group_by(Fund, date, Sector) %>% summarise(W = sum(Weight), .groups = "drop") %>% mutate(Key = paste(Fund, lubridate::year(date), Sector)) # sector weights in the first and last month, used in the text
@@ -1446,8 +1430,8 @@ source of return.
 Active share measures how far an index’s holdings differ from the
 benchmark, as half the sum of absolute weight differences across all
 stocks. A value of zero means identical holdings, while a value of one
-means that the two hold no stock in common. It is the natural measure of
-whether a size index offers something the Capped SWIX does not.
+means that the two hold no stock in common. It measures directly whether
+a size index offers something the Capped SWIX does not.
 
 ``` r
 Size_AS <- Active_Share_Calc(Size_Hold, BM = "Capped SWIX") # the active share of each size index against the Capped SWIX in every month
@@ -1464,13 +1448,13 @@ The three indexes sit at very different distances from the benchmark.
 The large caps averaged an active share of 29 percent before June 2023
 and only 15 percent after it, the same Richemont reweighting that
 changed their concentration. At 13 percent in August 2026, the large-cap
-index is close to a copy of the Capped SWIX, which is unsurprising given
+index is close to a copy of the Capped SWIX, which is expected given
 that the largest 40 stocks make up most of the benchmark’s weight. The
 mid caps averaged 79 percent, with a dip to around 70 percent between
 2021 and 2024 that matches their growing overlap with the large caps.
 The small caps averaged 95 percent, so almost all of their weight sits
 in stocks that are tiny or absent in the benchmark. Of the three, only
-the small caps offer a portfolio that is genuinely different from the
+the small caps offer a portfolio that is materially different from the
 Capped SWIX, and their risk and return should be judged with that in
 mind.
 
@@ -1501,7 +1485,7 @@ Plot_Size_Diversification(Size_Vol, Smooth_N = 3, # constituent and index volati
 
 ![](README_files/figure-markdown_github/q2_volatility-1.png)
 
-The figure reveals the most interesting trait of the small caps. Their
+The figure shows the most distinctive trait of the small caps. Their
 constituents are the most volatile of the three indexes, at an average
 of 35 percent against 33 percent for the large caps, yet the small-cap
 index is the calmest, at 12 percent against 18 percent. The
@@ -1569,13 +1553,13 @@ an annualised return of 10.9 percent, a Sharpe ratio of 0.77 and the
 shallowest maximum drawdown, at 19.9 percent. The small caps earned
 almost as much, at 10.3 percent, with a beta of only 0.68 and a down
 capture of 0.48, so on average they lost less than half of what the
-benchmark lost in its down months. Their bear market beta of 1.03 tells
-a less comfortable story, however. In ordinary down months small caps
-hold up, but in a deep sell-off they fall one for one with the market,
-which is how they suffered the largest drawdown of any index, at 45.6
-percent. The mid caps were the weakest, with a return of 7.3 percent, a
-Sharpe ratio of 0.53 and the worst asymmetry of all, a bull beta of 0.55
-against a bear beta of 1.07.
+benchmark lost in its down months. Their bear market beta of 1.03 points
+to a weakness, however. In ordinary down months small caps hold up, but
+in a deep sell-off they fall one for one with the market, which is how
+they suffered the largest drawdown of any index, at 45.6 percent. The
+mid caps were the weakest, with a return of 7.3 percent, a Sharpe ratio
+of 0.53 and the worst asymmetry of all, a bull beta of 0.55 against a
+bear beta of 1.07.
 
 The sub-periods show that these averages hide large shifts. The small
 caps returned -0.4 percent a year between 2015 and 2019, the worst of
@@ -1589,8 +1573,8 @@ steadily across all three periods.
 ## Downside Risk
 
 The full sample statistics above give one measure of each kind of loss.
-The downside risk table of Practical 2 adds several more, and the dot
-plots below rank the indexes on each.
+A downside risk table adds several more, and the dot plots below rank
+the indexes on each.
 
 ``` r
 Size_Cols <- c(`Capped SWIX` = "grey25", `Large Caps` = "#B2182B", `Mid Caps` = "darkorange", `Small Caps` = "#4C78A8") # one colour per index, as in the earlier figures
@@ -1620,8 +1604,8 @@ risk.
 
 Rolling returns show how the ranking of the indexes has changed from one
 investment horizon to the next. The figure plots rolling three year
-annualised returns, following Practical 1, and shades the months in
-which small caps were ahead of large caps.
+annualised returns and shades the months in which small caps were ahead
+of large caps.
 
 ``` r
 Size_Roll <- Roll_Return_Calc(Size_Monthly, NSel = 36) # rolling three year annualised returns of each index
@@ -1649,10 +1633,10 @@ benchmark.
 
 ## Returns Over Different Horizons
 
-Practical 1 compares annualised returns over several trailing horizons,
-which shows whether a ranking depends on the period chosen. The bars
-below end in September 2026, with returns over one year or less shown as
-cumulative and longer horizons annualised.
+Annualised returns over several trailing horizons show whether a ranking
+depends on the period chosen. The bars below end in September 2026, with
+returns over one year or less shown as cumulative and longer horizons
+annualised.
 
 ``` r
 Size_Hz <- Horizon_Returns_Calc(Size_Monthly) # returns over six months and one, three, five and ten years
@@ -1678,12 +1662,12 @@ caps trail them by a fraction of a point.
 ## Stratification
 
 The final step asks how each index behaves in different market
-conditions, following the stratification practical. Months are sorted
-into quintiles of three state variables, and the annualised return and
-volatility of each index are compared between the bottom and top
-quintile. The state variables are the monthly return of the Capped SWIX,
-rand volatility measured by the monthly average of the SAVIUSD index,
-and global risk aversion measured by the monthly average of the VIX.
+conditions. Months are sorted into quintiles of three state variables,
+and the annualised return and volatility of each index are compared
+between the bottom and top quintile. The state variables are the monthly
+return of the Capped SWIX, rand volatility measured by the monthly
+average of the SAVIUSD index, and global risk aversion measured by the
+monthly average of the VIX.
 
 ``` r
 Size_States <- bind_rows(State_Monthly_Calc(Level_df = bind_rows(Implied_Vol, Local_Cncy_Vol_Index %>% select(-Description)), Level_Sel = c("VIX", "SAVIUSD")), # the monthly average level of the VIX and the SAVIUSD
@@ -1728,14 +1712,15 @@ that has become close to a copy of the Capped SWIX, with an active share
 of 13 percent. Its risk comes from common global drivers that diversify
 poorly, but it has delivered the best full-sample trade-off and the
 shallowest drawdowns. The small-cap index is the only one that is
-genuinely different from the benchmark. It is a domestic, property-heavy
-portfolio of volatile but largely unrelated stocks, which makes the
-index calm in ordinary times and leaves it exposed in crises, in deep
-sell-offs and in periods of rand stress, when its diversification breaks
-down. Its low measured volatility is also partly an artefact of thin
-trading. The mid-cap index has drifted towards the large caps in its
-holdings and concentration, and has offered the weakest return and the
-least favourable asymmetry between up and down markets.
+materially different from the benchmark. It is a domestic,
+property-heavy portfolio of volatile but largely unrelated stocks, which
+makes the index calm in ordinary times and leaves it exposed in crises,
+in deep sell-offs and in periods of rand stress, when its
+diversification breaks down. Its low measured volatility is also partly
+an artefact of thin trading. The mid-cap index has drifted towards the
+large caps in its holdings and concentration, and has offered the
+weakest return and the least favourable asymmetry between up and down
+markets.
 
 For an investor, the indexes are therefore not interchangeable ways of
 owning local equity. The large caps are effectively the benchmark. The
@@ -1810,7 +1795,7 @@ peer, and 3.0 percent a year above the benchmark, while the median peer
 lagged it by 0.9 percent. It did so with lower volatility, at 11.1
 percent against 13.2 percent, and a maximum drawdown of 13.7 percent
 against 25.3 percent. Few funds combine a higher return with a lower
-risk, so this profile is the foundation of the case.
+risk, so this profile carries most of the case.
 
 ## Rolling Beta Across the Industry
 
@@ -1888,9 +1873,9 @@ Plot_Return_Drivers(Q3_Drivers, Fund_Label = "ABC Fund", # the sorted barcode of
 
 The market explains 81 percent of the typical peer’s return variance,
 against 55 percent for ABC Fund, and the share unique to ABC Fund is 29
-percent against 12 percent. One result tempers the story, however. ABC
-Fund’s non-market returns move with the industry’s common bets more than
-the typical peer’s do, with a shared share of 16 percent against 6
+percent against 12 percent. One result qualifies this finding, however.
+ABC Fund’s non-market returns move with the industry’s common bets more
+than the typical peer’s do, with a shared share of 16 percent against 6
 percent. Its difference from the industry therefore comes mainly from
 taking less market risk, and the deck advises the manager to describe
 the fund as independent of the market, since describing it as contrarian
@@ -1900,8 +1885,7 @@ to other managers would not survive scrutiny.
 
 The deck also contrasts how active ABC Fund is with how well that
 activeness has been rewarded, using the tracking error and information
-ratio from Practical 1 over rolling three year windows, against the
-middle half of peers.
+ratio over rolling three year windows, against the middle half of peers.
 
 ``` r
 Q3_TE_IR <- Roll_TE_IR_Calc(Univ, NSel = 36) # rolling three year tracking error and information ratio of every fund
@@ -1924,12 +1908,11 @@ benchmark.
 
 ## A Map of the Peer Group
 
-A principal component analysis of the funds with a full history,
-following Practical 4, places every fund on a two-dimensional map. Each
-point is a fund’s correlation with the first two components of peer
-returns, so funds close to the unit circle are well described by those
-two components, and funds far along the first axis move with the common
-peer factor.
+A principal component analysis of the funds with a full history places
+every fund on a two-dimensional map. Each point is a fund’s correlation
+with the first two components of peer returns, so funds close to the
+unit circle are well described by those two components, and funds far
+along the first axis move with the common peer factor.
 
 ``` r
 Q3_Pca <- Peer_PCA_Calc(Univ) # each fund's correlation with the first two principal components
@@ -1943,12 +1926,12 @@ Plot_Peer_PCA(Q3_Pca, Fund_Label = "ABC Fund", # the variable map
 ![](README_files/figure-markdown_github/q3_pca-1.png)
 
 The first component explains 83 percent of the variance of the 69 funds
-with a complete history, so a single factor, essentially the market,
-drives most of what the industry does. The median fund has a correlation
-of 0.93 with that factor. ABC Fund’s correlation is 0.84, the 7th lowest
-of the group, and it has the 3rd most negative loading on the second
-component, so it sits clearly apart from the cluster of funds pressed
-against the circle on the right. This is the same independence from the
+with a complete history, so a single common factor, which behaves like
+the market, drives most of what the industry does. The median fund has a
+correlation of 0.93 with that factor. ABC Fund’s correlation is 0.84,
+the 7th lowest of the group, and it has the 3rd most negative loading on
+the second component, so it sits apart from the cluster of funds close
+to the circle on the right. This is the same independence from the
 common factor shown by the beta and driver analysis, found here without
 reference to the benchmark at all.
 
@@ -1959,7 +1942,7 @@ combines two views. The top panel places ABC Fund’s rolling three year
 return inside the bands formed by the middle half and the middle 90
 percent of peers, with the benchmark for reference. The strip underneath
 shows the share of peers the fund beat in each calendar year, coloured
-by quartile, so that an audience can read its consistency at a glance.
+by quartile, so that an audience can judge its consistency quickly.
 
 ``` r
 Q3_Pct <- Peer_Percentile_Calc(Univ, BM_Monthly %>% filter(date <= Q3_End), Fund_Label = "ABC Fund", NSel = 36) # rolling three year returns in peer percentile bands
@@ -2017,32 +2000,32 @@ Plot_Dispersion_Alpha(Q3_DA, Fund_Label = "ABC Fund", # dispersion against trail
 The monthly correlation between ABC Fund’s raw excess return and
 dispersion is only -0.07, so the claim does not hold in its simplest
 form. Over 12 month windows and after removing market exposure, the
-picture changes. ABC Fund’s alpha rises with dispersion, with a slope of
+result changes. ABC Fund’s alpha rises with dispersion, with a slope of
 3.40 and a p-value of 0.004 using Newey-West standard errors with 12
 lags, which allow for the overlap between windows. Its lead over the
 typical peer also widens significantly, with a p-value of 0.010. In the
 most dispersed third of windows, ABC Fund’s 12 month alpha averaged 11.3
 percent against 1.9 percent for the typical peer, and it was ahead in
 100 percent of those windows. The deck therefore supports the manager’s
-claim in this framing, and the speaker notes give the safe wording, that
-high dispersion has rewarded the fund’s stock selection over a year once
-its lower market exposure is allowed for.
+claim in this framing, and the speaker notes frame it narrowly, stating
+that high dispersion has rewarded the fund’s stock selection over a year
+once its lower market exposure is allowed for.
 
 ## Conclusion to Question 3
 
-The evidence gives the manager a strong and honest case. The typical
-active manager delivers mostly market beta, with a median rolling beta
-of between 0.79 and 0.89 since 2019, while ABC Fund has earned a higher
-return than most peers with roughly half the market exposure, lower
-volatility and shallower drawdowns. Its returns depend far less on the
-market than those of almost any peer, and it has finished in the top
-half of the peer group in most years. The dispersion claim holds once
-performance is measured over a year and adjusted for market exposure,
-but not in raw monthly returns, and the description of the fund as
-contrarian to other managers is the weakest part of the story. The deck
-closes by advising the manager to lead with independence from the market
-and the risk record, to frame dispersion carefully, and to acknowledge
-openly that a lower beta fund will lag in sharp rallies.
+The evidence supports the manager’s case. The typical active manager
+delivers mostly market beta, with a median rolling beta of between 0.79
+and 0.89 since 2019, while ABC Fund has earned a higher return than most
+peers with roughly half the market exposure, lower volatility and
+shallower drawdowns. Its returns depend far less on the market than
+those of almost any peer, and it has finished in the top half of the
+peer group in most years. The dispersion claim holds once performance is
+measured over a year and adjusted for market exposure, but not in raw
+monthly returns, and the description of the fund as contrarian to other
+managers is the weakest part of the case. The deck closes by advising
+the manager to lead with independence from the market and the risk
+record, to frame dispersion carefully, and to acknowledge openly that a
+lower beta fund will lag in sharp rallies.
 
 # Question 4, Portfolio Construction
 
@@ -2067,11 +2050,7 @@ mandate, namely a constrained equal weight baseline, minimum variance,
 constrained risk parity and maximum Sharpe ratio, and compares them
 through the efficient frontier, the split between capital and risk, how
 hard each leans on the mandate, and an out-of-sample backtest from 2020.
-It closes with a recommendation and robustness checks. Each figure uses
-a chart type not used earlier in this repository, drawn from the R Graph
-Gallery, including a timeline, labels written along lines, a chord
-diagram, a mirrored stream, a treemap, a circular barplot, rainclouds, a
-bump chart and a radar chart.
+It closes with a recommendation and robustness checks.
 
 Two data points shape the design. The brief mentions description files
 that are not in the data folder, so the universe is built from the files
@@ -2171,7 +2150,7 @@ The constructed indexes behave as expected. The United States index
 returned 2.5 percent a year since 2005 with volatility of 7.5 percent,
 and the euro index, whose yield was below zero in 37 months, returned
 only 1.7 percent. In 2022 the three indexes lost between 16.4 percent
-and 22.1 percent as central banks raised rates, which is a reminder that
+and 22.1 percent as central banks raised rates, which shows that
 government bonds can fall together with equities when inflation is the
 shock.
 
@@ -2272,10 +2251,9 @@ weight baseline sit just inside it, since neither uses expected returns.
 ## Weights Along the Frontier
 
 The frontier figure shows the risk and return that the mandate allows,
-but not which assets deliver them. Following the frontier construction
-in Practical 3, the weights of every portfolio on the mandate frontier
-on the latest rebalance date are stacked against its volatility, with
-the four rules marked.
+but not which assets deliver them. The weights of every portfolio on the
+mandate frontier on the latest rebalance date are stacked against its
+volatility, with the four rules marked.
 
 ``` r
 Q4_Fw <- Frontier_Weights_Calc(Asset_Rets, Q4_Meta, Date = max(Rebal_Dates), Est_Start = lubridate::ymd(20100101), Min_Months = 60) # the weights of each frontier portfolio on the latest rebalance date
@@ -2302,11 +2280,10 @@ right of maximum Sharpe, since they are not frontier portfolios.
 ## Random Portfolios Within the Mandate
 
 Random portfolios give a benchmark that requires no optimisation at all.
-In the spirit of the random bounded weights in Practical 2, 20 000
-portfolios are drawn by giving each asset class a random budget within
-its limit and spreading it across the class at random, and only the
-draws that also meet the single asset, global and equity limits are
-kept.
+A total of 20 000 portfolios are drawn by giving each asset class a
+random budget within its limit and spreading it across the class at
+random, and only the draws that also meet the single asset, global and
+equity limits are kept.
 
 ``` r
 Q4_Random <- Random_Portfolios_Calc(Asset_Rets, Q4_Meta, Date = max(Rebal_Dates), N_Draws = 20000, Seed = 4321) # random portfolios that meet the mandate on the latest rebalance date
@@ -2346,8 +2323,8 @@ Plot_Capital_Risk_Bars(Q4_Weights, Q4_Pal, # capital next to risk for every rule
 
 ![](README_files/figure-markdown_github/q4_capital_risk-1.png)
 
-The bars make the central problem of a balanced fund visible. On average
-in the risk parity portfolio, bonds hold 25 percent of the capital but
+The bars show the central problem of a balanced fund. On average in the
+risk parity portfolio, bonds hold 25 percent of the capital but
 contribute only 10 percent of the risk, while equities hold 60 percent
 of the capital and contribute 78 percent of the risk. The 25 percent
 bond limit is what stops risk parity from balancing risk fully, since
@@ -2375,9 +2352,9 @@ Plot_Weight_Treemap(Q4_Weights, Q4_Pal, # the treemaps of the latest weights
 Risk parity holds 15 assets with no weight above 8 percent, and minimum
 variance holds 10, led by Japan equity at 19 percent. Maximum Sharpe
 holds only 6, with US equity at the 35 percent cap and the inflation
-linked bonds and gold at their class caps, which is the familiar
-tendency of mean-variance optimisation to bet heavily on the assets with
-the highest estimated returns.
+linked bonds and gold at their class caps, which is the usual tendency
+of mean-variance optimisation to bet heavily on the assets with the
+highest estimated returns.
 
 ## How Hard the Mandate Binds
 
@@ -2505,12 +2482,11 @@ weight baseline at similar volatility, and it was the best rule in the
 stressed years. Its risk is spread across an effective 12.8 sources,
 against 3.4 for maximum Sharpe, and it trades only 2.8 percent of the
 portfolio a quarter, against 6.5 percent for minimum variance, which
-matters for an index fund that must keep trading costs low. Most
-importantly, it does not depend on expected returns. Maximum Sharpe’s
-higher return rests on its estimates of which assets will do best, and
-when those estimates are not shrunk, its return falls to 11.6 percent,
-its drawdown deepens to 21.1 percent and its turnover rises to 6.8
-percent.
+matters for an index fund that must keep trading costs low. It also does
+not depend on expected returns. Maximum Sharpe’s higher return rests on
+its estimates of which assets will do best, and when those estimates are
+not shrunk, its return falls to 11.6 percent, its drawdown deepens to
+21.1 percent and its turnover rises to 6.8 percent.
 
 The ranking is robust to the estimation choices. With no correlation
 shrinkage, risk parity returns 11.1 percent and minimum variance 10.5

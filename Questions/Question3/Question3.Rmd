@@ -98,7 +98,7 @@ Plot_Beta_Alpha(Stats, Fund_Label = "ABC Fund", Title = "Market Beta and Alpha, 
 ```
 
 ::: notes
-Each dot is a peer fund. Moving left means less market exposure, and moving up means more return that the market does not explain. ABC Fund sits in the top left corner, with an alpha of `r Pct_Text(Fund_Stats$Alpha, 0.1)` a year against `r Pct_Text(Peer_Med$Alpha, 0.1)` for the typical peer. This is the clearest answer to whether the fund offers something other than market beta.
+Each dot is a peer fund. Moving left means less market exposure, and moving up means more return that the market does not explain. ABC Fund sits in the top left corner, with an alpha of `r Pct_Text(Fund_Stats$Alpha, 0.1)` a year against `r Pct_Text(Peer_Med$Alpha, 0.1)` for the typical peer. This answers whether the fund offers something other than market beta.
 :::
 
 ## ABC Fund Depends Far Less on the Market
@@ -122,7 +122,7 @@ Plot_Roll_TE_IR(Q3_TE_IR, Fund_Label = "ABC Fund", Title = "Rolling 3 Year Track
 ```
 
 ::: notes
-Tracking error measures how far a fund's returns stray from the benchmark, so it is a gauge of how active the fund is. The information ratio divides the return above the benchmark by that tracking error, so it shows whether the activeness has been rewarded. ABC Fund has consistently taken about twice the active risk of the typical peer, and its information ratio was above the typical peer's in most months, peaking at `r sprintf("%.2f", max(TI_Facts$Fund_IR))` in `r format(TI_Facts$date[which.max(TI_Facts$Fund_IR)], "%B %Y")`. In the latest windows both ABC Fund and the typical peer have negative information ratios, at `r sprintf("%.2f", dplyr::last(TI_Facts$Fund_IR))` and `r sprintf("%.2f", dplyr::last(TI_Facts$Peer_IR))`, because the strong market of 2025 left most active managers behind. The honest message is that the fund is genuinely active and has been paid for it over most of its history.
+Tracking error measures how far a fund's returns stray from the benchmark, so it is a gauge of how active the fund is. The information ratio divides the return above the benchmark by that tracking error, so it shows whether the activeness has been rewarded. ABC Fund has consistently taken about twice the active risk of the typical peer, and its information ratio was above the typical peer's in most months, peaking at `r sprintf("%.2f", max(TI_Facts$Fund_IR))` in `r format(TI_Facts$date[which.max(TI_Facts$Fund_IR)], "%B %Y")`. In the latest windows both ABC Fund and the typical peer have negative information ratios, at `r sprintf("%.2f", dplyr::last(TI_Facts$Fund_IR))` and `r sprintf("%.2f", dplyr::last(TI_Facts$Peer_IR))`, because the strong market of 2025 left most active managers behind. The fair conclusion is that the fund is active and has been paid for it over most of its history.
 :::
 
 ## ABC Fund Stands Apart From the Peer Group
@@ -134,7 +134,7 @@ Plot_Peer_PCA(Q3_Pca, Fund_Label = "ABC Fund", Title = "A Map of the Peer Group 
 ```
 
 ::: notes
-This map is built only from the funds' own returns, with no reference to the benchmark. Each dot is a fund, placed by how closely it follows the two strongest common patterns in the peer group. The first pattern is essentially the market, and it explains `r Pct_Text(Q3_Pca$Share1[1])` of the ups and downs of the `r Q3_Pca$N[1]` funds with a full history, which is why most dots are pressed against the right edge of the circle. ABC Fund's correlation with that pattern is `r sprintf("%.2f", Pca_Fund$PC1)`, against `r sprintf("%.2f", median(Q3_Pca$PC1))` for the typical fund, the `r scales::ordinal(Pca_Fund$Rank1)` lowest of the group. It confirms the earlier slides from a completely different angle.
+This map is built only from the funds' own returns, with no reference to the benchmark. Each dot is a fund, placed by how closely it follows the two strongest common patterns in the peer group. The first pattern behaves like the market, and it explains `r Pct_Text(Q3_Pca$Share1[1])` of the ups and downs of the `r Q3_Pca$N[1]` funds with a full history, which is why most dots sit close to the right edge of the circle. ABC Fund's correlation with that pattern is `r sprintf("%.2f", Pca_Fund$PC1)`, against `r sprintf("%.2f", median(Q3_Pca$PC1))` for the typical fund, the `r scales::ordinal(Pca_Fund$Rank1)` lowest of the group. It confirms the earlier slides from a completely different angle.
 :::
 
 ## Top Half of Peers in `r sum(Cal$Pct >= 0.5)` of `r nrow(Cal)` Calendar Years
@@ -158,7 +158,7 @@ Plot_Dispersion_Alpha(DA, Fund_Label = "ABC Fund", Title = "Market Dispersion an
 ```
 
 ::: notes
-Dispersion measures how differently individual shares behave in a month. When it is high, stock picking matters most. Over rolling 12 month periods, ABC Fund's risk-adjusted return rises clearly with dispersion, and the link is statistically significant, with a p-value of `r sprintf("%.3f", NW_Fund$p)` after allowing for overlapping periods. In the most dispersed third of periods, ABC Fund beat the typical peer every time. The claim should be made carefully, however. Month by month, raw returns above the benchmark show no link with dispersion, with a correlation of `r sprintf("%.2f", Monthly_Test$Cor)`, because dispersed months are often strong rising markets in which a low beta fund lags. The safe wording is that high dispersion has rewarded ABC Fund's stock selection over a year, after allowing for its lower market exposure.
+Dispersion measures how differently individual shares behave in a month. When it is high, stock picking matters most. Over rolling 12 month periods, ABC Fund's risk-adjusted return rises clearly with dispersion, and the link is statistically significant, with a p-value of `r sprintf("%.3f", NW_Fund$p)` after allowing for overlapping periods. In the most dispersed third of periods, ABC Fund beat the typical peer every time. The claim should be made carefully, however. Month by month, raw returns above the benchmark show no link with dispersion, with a correlation of `r sprintf("%.2f", Monthly_Test$Cor)`, because dispersed months are often strong rising markets in which a low beta fund lags. The defensible wording is that high dispersion has rewarded ABC Fund's stock selection over a year, after allowing for its lower market exposure.
 :::
 
 ## Making the Case
