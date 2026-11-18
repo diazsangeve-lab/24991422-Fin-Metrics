@@ -22,6 +22,7 @@ Size_Vol_Calc <- function(Holdings, Stock_Rets, Dates, Lookback = 63, Ret_Cap = 
             if( nrow(W) == 0 ) return(NULL) # skip if the index has no holdings on that date
             R <- R_All[Rows, W$Tickers, drop = FALSE] # daily returns of the holdings in the window
             Keep <- colMeans(!is.na(R)) >= Min_Coverage # stocks with enough history in the window
+            if( sum(W$Weight[Keep]) < Min_Coverage ) return(NULL) # skip the month if the stocks with enough data hold less than the minimum share of the index weight
             R <- R[, Keep, drop = FALSE] ; w <- W$Weight[Keep] / sum(W$Weight[Keep]) # drop thin stocks and rescale the weights
             S <- apply(R, 2, sd, na.rm = TRUE) * sqrt(252) # each stock's annualised realised volatility
             Sigma <- cov(R, use = "pairwise.complete.obs") * 252 # the annualised covariance matrix
