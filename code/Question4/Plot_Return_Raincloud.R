@@ -1,5 +1,5 @@
 # Plots the distribution of each portfolio rule's monthly returns as a raincloud, combining a half density, a narrow boxplot and the individual months as rain below.
-Plot_Return_Raincloud <- function(Rets, Pal, Title = "Monthly Return Distributions", Subtitle = "", Caption = "Note:\nCalculation own"){
+Plot_Return_Raincloud <- function(Rets, Pal, Title = "Monthly Return Distributions", Subtitle = "", Caption = "Note:\nCalculation own"){ # define Plot_Return_Raincloud, with inputs Rets and Pal, plus the title, subtitle and caption text
 
     D <- Rets %>% mutate(Strategy = factor(Strategy, levels = rev(names(Pal$Strategy)))) # the rules from top to bottom in a fixed order
     Worst <- D %>% group_by(Strategy) %>% slice_min(Returns, n = 1) %>% ungroup() # each rule's worst month, labelled

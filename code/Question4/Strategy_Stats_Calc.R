@@ -1,5 +1,5 @@
 # Summarises each portfolio rule's backtest into return, risk, tail risk, turnover and diversification measures.
-Strategy_Stats_Calc <- function(BT, W){
+Strategy_Stats_Calc <- function(BT, W){ # define Strategy_Stats_Calc, with inputs BT and W
 
     Perf <- BT$Returns %>% group_by(Strategy) %>% summarise(Ret = prod(1 + Returns)^(12 / n()) - 1, # the annualised compounded return
                                                             Vol = sd(Returns) * sqrt(12), # the annualised volatility

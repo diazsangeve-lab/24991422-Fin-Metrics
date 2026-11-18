@@ -1,5 +1,5 @@
 # Builds monthly total returns for constant maturity government bonds from their yields, by repricing a par bond bought at last month's yield at this month's yield and adding the coupon earned in the month.
-Bond_TRI_Calc <- function(Yields, Bond_Sel, Maturity = 10, Freq = 2){
+Bond_TRI_Calc <- function(Yields, Bond_Sel, Maturity = 10, Freq = 2){ # define Bond_TRI_Calc, with inputs Yields, Bond_Sel, Maturity and Freq
 
     # For stepping through uncomment:
     # Yields <- Bond_Yields ; Bond_Sel <- c("US_10Yr", "EURO_10Yr", "UK_10Yr") ; Maturity <- 10 ; Freq <- 2
@@ -11,7 +11,7 @@ Bond_TRI_Calc <- function(Yields, Bond_Sel, Maturity = 10, Freq = 2){
         ifelse(abs(r) < 1e-8, cpn / Freq * n + 1, cpn / Freq * (1 - (1 + r)^(-n)) / r + (1 + r)^(-n)) # the annuity of coupons plus the discounted face value, with the zero yield case handled separately
     }
 
-    Yields %>%
+    Yields %>% # start from Yields
         filter(Name %in% Bond_Sel) %>% # keep only the chosen bonds
         mutate(YM = format(date, "%Y%m")) %>% # a year and month label
         group_by(Name, YM) %>% # one yield per bond per month

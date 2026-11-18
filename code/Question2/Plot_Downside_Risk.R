@@ -1,5 +1,5 @@
 # Plots downside risk measures for each index as dot plots, one panel per measure, so that the indexes can be ranked on every kind of loss.
-Plot_Downside_Risk <- function(Dr, Cols, Title = "Downside Risk by Size Index", Subtitle = "", Caption = "Note:\nCalculation own"){
+Plot_Downside_Risk <- function(Dr, Cols, Title = "Downside Risk by Size Index", Subtitle = "", Caption = "Note:\nCalculation own"){ # define Plot_Downside_Risk, with inputs Dr and Cols, plus the title, subtitle and caption text
 
     ggplot(Dr, aes(Value, Name, color = Name)) + # loss along the bottom and one row per index
         geom_segment(aes(x = 0, xend = Value, y = Name, yend = Name), linewidth = 1, alpha = 0.5) + # a stem from zero to each value

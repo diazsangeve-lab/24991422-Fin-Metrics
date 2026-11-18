@@ -1,5 +1,5 @@
 # Returns the colour palettes used across question 4, with assets shaded within families by region and asset class, and one colour per portfolio rule.
-Q4_Palettes <- function(Meta){
+Q4_Palettes <- function(Meta){ # define Q4_Palettes, with input Meta
 
     Family <- Meta %>% mutate(Family = case_when(Class == "Equity" & Region == "Global" ~ "Global equity", Class == "Equity" ~ "Local equity and property", Class == "Bonds" & Region == "Global" ~ "Global bonds", Class == "Bonds" ~ "Local bonds", TRUE ~ "Commodities")) # one family per region and class
     Ramps <- list(`Global equity` = c("#08306B", "#9ECAE1"), `Local equity and property` = c("#7F2704", "#FDAE6B"), `Global bonds` = c("#00441B", "#A1D99B"), `Local bonds` = c("#3F007D", "#BCBDDC"), Commodities = c("#8C6D1F", "#F2D57E")) # the darkest and lightest shade of each family

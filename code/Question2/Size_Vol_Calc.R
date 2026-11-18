@@ -1,11 +1,11 @@
 # Calculates, on each month end, the weighted average realised volatility of an index's constituents and the volatility of the index built from them, using trailing daily stock returns.
-Size_Vol_Calc <- function(Holdings, Stock_Rets, Dates, Lookback = 63, Ret_Cap = 0.25, Min_Coverage = 0.8){
+Size_Vol_Calc <- function(Holdings, Stock_Rets, Dates, Lookback = 63, Ret_Cap = 0.25, Min_Coverage = 0.8){ # define Size_Vol_Calc, with inputs Holdings, Stock_Rets, Dates, Lookback, Ret_Cap and Min_Coverage
 
     # For stepping through uncomment:
     # Holdings <- Size_Hold ; Stock_Rets <- Stock_Returns ; Dates <- Size_Dates ; Lookback <- 63
 
-    Wide <-
-        Stock_Rets %>%
+    Wide <- # build Wide through the steps below
+        Stock_Rets %>% # start from the daily stock returns
         filter(Tickers %in% unique(Holdings$Tickers)) %>% # only stocks that ever appear in the indexes
         mutate(Returns = pmax(pmin(Returns, Ret_Cap), -Ret_Cap)) %>% # cap extreme daily returns
         select(date, Tickers, Returns) %>% # keep only what the calculation needs

@@ -1,11 +1,11 @@
 # Aggregates daily log returns into weekly log returns, keeping only weeks that every series traded in.
-Weekly_Returns_Calc <- function(df){
+Weekly_Returns_Calc <- function(df){ # define Weekly_Returns_Calc, with input df
 
     if( !all(c("date", "Name", "dlogret") %in% names(df)) ) stop("... for Weekly_Returns_Calc to work, provide columns called 'date', 'Name' and 'dlogret'") # stop early if the data is not in the expected shape
 
     N_Series <- length(unique(df$Name)) # the number of series, used to check that a week is complete
 
-    df %>%
+    df %>% # start from the input data
         mutate(Week = lubridate::floor_date(date, unit = "week", week_start = 1)) %>% # label every day with the Monday of its week
         group_by(Name, Week) %>% # one number per series per week
         summarise(dlogret = sum(dlogret, na.rm = T), .groups = "drop") %>% # log returns add up over time, so the weekly return is the sum of the daily ones

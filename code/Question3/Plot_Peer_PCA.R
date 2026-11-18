@@ -1,5 +1,5 @@
 # Plots every fund's correlation with the first two principal components of peer returns inside the unit circle, with the client fund highlighted, in the style of the variable plot from Practical 4.
-Plot_Peer_PCA <- function(Pc, Fund_Label = "ABC Fund", Title = "A Map of the Peer Group", Subtitle = "", Caption = "Note:\nCalculation own"){
+Plot_Peer_PCA <- function(Pc, Fund_Label = "ABC Fund", Title = "A Map of the Peer Group", Subtitle = "", Caption = "Note:\nCalculation own"){ # define Plot_Peer_PCA, with inputs Pc and Fund_Label, plus the title, subtitle and caption text
 
     Circle <- tibble(a = seq(0, 2 * pi, length.out = 200), x = cos(a), y = sin(a)) # the unit circle
     Fund <- Pc %>% filter(Name == Fund_Label) # the client fund

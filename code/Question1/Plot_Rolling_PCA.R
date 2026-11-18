@@ -1,5 +1,5 @@
 # Plots the share of constituent return variance explained by the first three principal components over time as stacked areas, so that periods in which one common factor dominates stand out.
-Plot_Rolling_PCA <- function(Pca_df, Highlight_From = lubridate::ymd(20260101), Title = "How Much One Factor Explains", Subtitle = "", Caption = "Note:\nCalculation own"){
+Plot_Rolling_PCA <- function(Pca_df, Highlight_From = lubridate::ymd(20260101), Title = "How Much One Factor Explains", Subtitle = "", Caption = "Note:\nCalculation own"){ # define Plot_Rolling_PCA, with inputs Pca_df and Highlight_From, plus the title, subtitle and caption text
 
     D <- Pca_df %>% select(date, `First component` = PC1, `Second component` = PC2, `Third component` = PC3) %>% gather(Component, Share, -date) %>% mutate(Component = factor(Component, levels = c("Third component", "Second component", "First component"))) # long format, with the first component at the bottom
     Peak <- Pca_df %>% slice_max(PC1, n = 1) # the month in which the first component explained the most

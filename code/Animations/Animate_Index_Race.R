@@ -1,10 +1,10 @@
 # Animates the growth of one unit invested in each local index, drawing the lines month by month with each index's name and value travelling at the head of its line, and saves the result as a gif.
-Animate_Index_Race <- function(Monthly, File, Cols, Title = "The Local Equity Market Since 2015", Subtitle = "", Caption = "Note:\nCalculation own", Width = 900, Height = 520, Frames = 120, Fps = 12){
+Animate_Index_Race <- function(Monthly, File, Cols, Title = "The Local Equity Market Since 2015", Subtitle = "", Caption = "Note:\nCalculation own", Width = 900, Height = 520, Frames = 120, Fps = 12){ # define Animate_Index_Race, with inputs Monthly, File, Cols, Width, Height, Frames and Fps, plus the title, subtitle and caption text
 
     if( !all(c("date", "Name", "Returns") %in% names(Monthly)) ) stop("... Monthly must have columns called 'date', 'Name' and 'Returns'") # stop early if the returns are not in the expected shape
 
-    D <-
-        Monthly %>%
+    D <- # build D through the steps below
+        Monthly %>% # start from the monthly returns
         arrange(date) %>% # order by date before compounding
         group_by(Name) %>% # compound each index on its own
         mutate(Growth = cumprod(1 + Returns)) %>% # the value of one unit invested at the start
@@ -13,14 +13,14 @@ Animate_Index_Race <- function(Monthly, File, Cols, Title = "The Local Equity Ma
     Gap <- 0.09 * diff(range(D$Growth)) # the smallest vertical gap between two labels, so that they never overlap
     Breaks <- seq(lubridate::floor_date(min(D$date), "year"), max(D$date), by = "2 years") # date labels every two years that stop at the data
 
-    D <-
-        D %>%
+    D <- # build D through the steps below
+        D %>% # start from D, built above
         group_by(date) %>% # space the labels month by month
         arrange(Growth, .by_group = TRUE) %>% # from the lowest index to the highest
         mutate(Lab_Y = purrr::accumulate(Growth, ~max(.y, .x + Gap))) %>% # each label at its line's height, pushed up when it would touch the label below
         ungroup() # remove the grouping again
 
-    g <-
+    g <- # build the plot in layers and store it as g
         ggplot(D, aes(date, Growth, color = Name)) + # dates along the bottom and growth up the side
         geom_hline(yintercept = 1, color = "grey60", linetype = "dashed") + # the starting value
         geom_line(linewidth = 1.3) + # the path of each index so far

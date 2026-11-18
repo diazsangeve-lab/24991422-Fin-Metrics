@@ -1,7 +1,7 @@
 # Calculates the autocorrelation of returns and of squared returns for each series, with the Ljung-Box test of no autocorrelation, following the volatility clustering checks in Practical 6.
-Acf_Calc <- function(df, Series, Lags = 25, Ret_Col = "dlogret"){
+Acf_Calc <- function(df, Series, Lags = 25, Ret_Col = "dlogret"){ # define Acf_Calc, with inputs df, Series, Lags and Ret_Col
 
-    df %>%
+    df %>% # start from the input data
         filter(Name %in% Series, !is.na(.data[[Ret_Col]])) %>% # the chosen series with their returns
         group_by(Name) %>% # one set of autocorrelations per series
         group_modify(function(x, key){ # repeat for each series
@@ -15,7 +15,7 @@ Acf_Calc <- function(df, Series, Lags = 25, Ret_Col = "dlogret"){
                        LB_Stat = as.numeric(stats::Box.test(y, lag = 10, type = "Ljung-Box")$statistic), # the Ljung-Box statistic over ten lags
                        LB_p = stats::Box.test(y, lag = 10, type = "Ljung-Box")$p.value) # its p-value, where a small value rejects no autocorrelation
             })
-        }) %>%
+        }) %>% # close the inner function and pass its results on
         ungroup() # remove the grouping again
 
 }

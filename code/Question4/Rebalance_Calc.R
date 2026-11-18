@@ -1,5 +1,5 @@
 # Calculates the weights of each portfolio rule on every rebalance date, using all monthly returns from the estimation start up to that date and only assets with enough history, and records the ex ante risk contributions.
-Rebalance_Calc <- function(R_Long, Meta, Rebal_Dates, Strategies, Est_Start = lubridate::ymd(20100101), Min_Months = 60, Min_Years = 10, ...){
+Rebalance_Calc <- function(R_Long, Meta, Rebal_Dates, Strategies, Est_Start = lubridate::ymd(20100101), Min_Months = 60, Min_Years = 10, ...){ # define Rebalance_Calc, with inputs R_Long, Meta, Rebal_Dates, Strategies, Est_Start, Min_Months, Min_Years and ...
 
     # For stepping through uncomment:
     # R_Long <- Asset_Rets ; Meta <- Meta ; Rebal_Dates <- Rebal_Dates ; Strategies <- Strategies ; Est_Start <- ymd(20100101) ; Min_Months <- 60 ; Min_Years <- 10
@@ -25,7 +25,7 @@ Rebalance_Calc <- function(R_Long, Meta, Rebal_Dates, Strategies, Est_Start = lu
                    ExAnte_Vol = sqrt(Port_Var * 12), # the ex ante annualised volatility
                    ExAnte_Ret = sum(w * Est$Mu) * 12) # the ex ante annualised expected return
         })
-    }) %>%
+    }) %>% # close the inner function and pass its results on
         mutate(Weight = ifelse(abs(Weight) < 1e-6, 0, Weight)) %>% # treat numerical dust as zero
         group_by(date, Strategy) %>% mutate(Weight = Weight / sum(Weight)) %>% ungroup() %>% # rescale so that the weights still sum to exactly one
         left_join(Meta %>% select(Asset, Class, Region), by = "Asset") # attach each asset's class and region

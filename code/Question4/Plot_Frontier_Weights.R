@@ -1,5 +1,5 @@
 # Plots the weights of every portfolio along the efficient frontier as stacked areas against its volatility, with the four portfolio rules marked, so that it is clear which assets enter as the target risk rises.
-Plot_Frontier_Weights <- function(Fw, W, Pal, Title = "Portfolio Weights Along the Frontier", Subtitle = "", Caption = "Note:\nCalculation own"){
+Plot_Frontier_Weights <- function(Fw, W, Pal, Title = "Portfolio Weights Along the Frontier", Subtitle = "", Caption = "Note:\nCalculation own"){ # define Plot_Frontier_Weights, with inputs Fw, W and Pal, plus the title, subtitle and caption text
 
     D <- Fw %>% mutate(Asset = factor(Asset, levels = names(Pal$Asset))) # assets in family order
     Rules <- W %>% filter(date == max(date)) %>% distinct(Strategy, Vol = ExAnte_Vol) # the volatility of each rule on the same date

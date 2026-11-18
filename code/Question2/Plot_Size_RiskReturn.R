@@ -5,8 +5,8 @@ Plot_Size_RiskReturn <- function(Period_Stats, Fund_Cols = c(`Capped SWIX` = "bl
 
     Background <- Period_Stats %>% rename(Other = Name) # a copy without the panel variable, so that every index appears in grey in every panel
 
-    g <-
-        Period_Stats %>%
+    g <- # build the plot in layers and store it as g
+        Period_Stats %>% # start from Period_Stats
         ggplot(aes(Vol, Ret)) + # volatility along the bottom and return up the side
         geom_hline(yintercept = 0, color = "grey50", linetype = "dashed") + # zero return
         geom_path(data = Background, aes(group = Other), color = "grey85", linewidth = 0.6) + # the paths of all indexes in grey, for comparison
@@ -22,6 +22,6 @@ Plot_Size_RiskReturn <- function(Period_Stats, Fund_Cols = c(`Capped SWIX` = "bl
         fmxdat::theme_fmx(title.size = fmxdat::ggpts(30), subtitle.size = fmxdat::ggpts(26), caption.size = fmxdat::ggpts(22), CustomCaption = T) + # the clean course theme with readable text sizes
         labs(x = "Annualised volatility", y = "Annualised return", title = Title, subtitle = Subtitle, caption = Caption, size = "Maximum drawdown") # axis names, title and note
 
-    g
+    g # return the finished plot
 
 }

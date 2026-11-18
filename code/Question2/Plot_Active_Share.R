@@ -5,8 +5,8 @@ Plot_Active_Share <- function(AS, Fund_Cols = c(`Large Caps` = "#B2182B", `Mid C
     Ends <- D %>% filter(date == max(date)) # the last month, where the line labels go
     Breaks <- seq(lubridate::floor_date(min(D$date), "year"), max(D$date), by = "2 years") # date labels every two years that stop at the last month
 
-    g <-
-        D %>%
+    g <- # build the plot in layers and store it as g
+        D %>% # start from D, built above
         ggplot() + # start the plot
         geom_line(aes(date, Avg, color = Fund), linetype = "dashed", linewidth = 0.5) + # each index's average active share
         geom_line(aes(date, Active_Share, color = Fund), linewidth = 1.1) + # the monthly active share

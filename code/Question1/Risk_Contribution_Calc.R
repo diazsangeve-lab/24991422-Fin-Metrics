@@ -1,17 +1,17 @@
 # Decomposes a portfolio's volatility into the contribution of each holding on one rebalance date, using the marginal contribution maths from Practical 2.
-Risk_Contribution_Calc <- function(Holdings, Stock_Rets, Date_Sel, Lookback_Months = 12, Ret_Cap = 0.25){
+Risk_Contribution_Calc <- function(Holdings, Stock_Rets, Date_Sel, Lookback_Months = 12, Ret_Cap = 0.25){ # define Risk_Contribution_Calc, with inputs Holdings, Stock_Rets, Date_Sel, Lookback_Months and Ret_Cap
 
     # For stepping through uncomment:
     # Holdings <- SafeCore ; Stock_Rets <- Stock_Returns ; Date_Sel <- ymd(20260831) ; Lookback_Months <- 12
 
-    W <-
-        Holdings %>%
+    W <- # build W through the steps below
+        Holdings %>% # start from the holdings
         filter(date == Date_Sel) %>% # the holdings on the chosen rebalance date
         filter(Tickers %in% unique(Stock_Rets$Tickers)) %>% # only holdings with return data
         mutate(Weight = Weight / sum(Weight)) # rescale so that the weights sum to one
 
-    R_wide <-
-        Stock_Rets %>%
+    R_wide <- # build R_wide through the steps below
+        Stock_Rets %>% # start from the daily stock returns
         filter(Tickers %in% W$Tickers, date > Date_Sel %m-% months(Lookback_Months), date <= Date_Sel) %>% # the trailing window of returns for the current holdings
         mutate(Returns = pmax(pmin(Returns, Ret_Cap), -Ret_Cap)) %>% # cap extreme daily returns
         select(date, Tickers, Returns) %>% # keep only what the covariance needs
@@ -33,7 +33,7 @@ Risk_Contribution_Calc <- function(Holdings, Stock_Rets, Date_Sel, Lookback_Mont
     mctr <- as.numeric(Sigma %*% w) / sigma_p # each stock's marginal contribution to risk
     cctr <- w * mctr # each stock's total contribution to risk, which sums to the portfolio volatility
 
-    W %>%
+    W %>% # start from W, built above
         mutate(Risk_Contrib = cctr, # the contribution in volatility units
                Risk_Share = cctr / sigma_p, # the contribution as a share of total portfolio volatility
                Port_Vol = sigma_p, # the portfolio volatility on this date

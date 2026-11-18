@@ -2,8 +2,8 @@
 Plot_Size_Rolling <- function(RR, Fund_Cols = c(`Capped SWIX` = "black", `Large Caps` = "#B2182B", `Mid Caps` = "darkorange", `Small Caps` = "#4C78A8"), Title = "Rolling 3 Year Annualised Returns", Subtitle = "", Caption = "Note:\nCalculation own"){
 
     Spread <- RR %>% select(date, Name, RollRet) %>% spread(Name, RollRet) %>% mutate(Small_Leads = `Small Caps` > `Large Caps`) # whether small caps were ahead of large caps on each date
-    Spells <-
-        Spread %>%
+    Spells <- # build Spells through the steps below
+        Spread %>% # start from Spread, built above
         filter(!is.na(Small_Leads)) %>% # only dates where both rolling returns exist
         mutate(Spell = cumsum(Small_Leads != lag(Small_Leads, default = dplyr::first(Small_Leads)))) %>% # a new spell number each time the leader changes
         filter(Small_Leads) %>% # keep the spells in which small caps led
@@ -13,8 +13,8 @@ Plot_Size_Rolling <- function(RR, Fund_Cols = c(`Capped SWIX` = "black", `Large 
     Ends <- RR %>% filter(date == max(date)) # the last month, where the line labels go
     Breaks <- seq(lubridate::floor_date(min(RR$date), "year"), max(RR$date), by = "1 year") # yearly date labels that stop at the last month
 
-    g <-
-        RR %>%
+    g <- # build the plot in layers and store it as g
+        RR %>% # start from RR
         ggplot() + # start the plot
         geom_rect(data = Spells, aes(xmin = Start, xmax = End, ymin = -Inf, ymax = Inf), fill = "#4C78A8", alpha = 0.1) + # shade the spells in which small caps led large caps
         geom_hline(yintercept = 0, color = "grey40") + # zero return

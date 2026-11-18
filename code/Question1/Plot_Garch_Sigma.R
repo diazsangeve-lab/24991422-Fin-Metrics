@@ -3,8 +3,8 @@ Plot_Garch_Sigma <- function(df, X_Max = 0.5, Cols = c("#1F4E79", "grey50", "dar
 
     if( !all(c("Sigma", "Model", "Persistence") %in% names(df)) ) stop("... for Plot_Garch_Sigma to work, first run Best_Garch_Sigma") # stop early if the model output is missing
 
-    g <-
-        df %>%
+    g <- # build the plot in layers and store it as g
+        df %>% # start from the input data
         mutate(Label = glue::glue("{Name} ({Model}, persistence {sprintf('%.2f', Persistence)})")) %>% # name each series with its chosen model and persistence
         mutate(Year = factor(lubridate::year(date), levels = rev(sort(unique(lubridate::year(date)))))) %>% # years as rows, with the most recent year at the top
         ggplot(aes(Sigma, Year, fill = Label, color = Label)) + # volatility along the bottom and one row per year

@@ -1,9 +1,9 @@
 # Chains daily returns into calendar month returns for every series, labelling each month with its last trading day.
-Monthly_Returns_Calc <- function(df){
+Monthly_Returns_Calc <- function(df){ # define Monthly_Returns_Calc, with input df
 
     if( !all(c("date", "Name", "Returns") %in% names(df)) ) stop("... df must have columns called 'date', 'Name' and 'Returns'") # stop early if the data is not in the expected shape
 
-    df %>%
+    df %>% # start from the input data
         mutate(YM = format(date, "%Y%B")) %>% # a year and month label
         group_by(Name, YM) %>% # one number per series per month
         summarise(date = max(date), Returns = prod(1 + Returns) - 1, .groups = "drop") %>% # compound the daily returns and keep the last trading day as the date

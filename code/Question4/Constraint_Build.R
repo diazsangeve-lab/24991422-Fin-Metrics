@@ -1,5 +1,5 @@
 # Builds the linear constraints of the mandate for the eligible assets, in the form quadprog needs, with weights summing to one, long only, a single asset cap, caps per asset class and a cap on global exposure.
-Constraint_Build <- function(Meta_Elig, Class_Caps = c(Bonds = 0.25, Equity = 0.75, Commodity = 0.15), Single_Cap = 0.35, Global_Cap = 0.60){
+Constraint_Build <- function(Meta_Elig, Class_Caps = c(Bonds = 0.25, Equity = 0.75, Commodity = 0.15), Single_Cap = 0.35, Global_Cap = 0.60){ # define Constraint_Build, with inputs Meta_Elig, Class_Caps, Single_Cap and Global_Cap
 
     # For stepping through uncomment:
     # Meta_Elig <- Meta %>% filter(Asset %in% Eligible) ; Class_Caps <- c(Bonds = 0.25, Equity = 0.75, Commodity = 0.15) ; Single_Cap <- 0.35 ; Global_Cap <- 0.60

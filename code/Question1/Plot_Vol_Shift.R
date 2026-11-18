@@ -1,6 +1,6 @@
 # Compares annualised volatility between a baseline period and a target period as a directional shift plot, with full-sample benchmarks and the change in a side column.
-Plot_Vol_Shift <- function(Vol_Periods, Base_Per = "2021-2024", Target_Per = "2026 YTD", Index_Sel = NULL,
-                           Title = "Shift in Annualised Volatility from the Baseline to 2026", Subtitle = "", Caption = "Note:\nCalculation own"){
+Plot_Vol_Shift <- function(Vol_Periods, Base_Per = "2021-2024", Target_Per = "2026 YTD", Index_Sel = NULL, # define Plot_Vol_Shift, with inputs Vol_Periods, Base_Per, Target_Per and Index_Sel
+                           Title = "Shift in Annualised Volatility from the Baseline to 2026", Subtitle = "", Caption = "Note:\nCalculation own"){ # the default title, subtitle and caption text
 
     # For stepping through uncomment:
     # Base_Per <- "2021-2024" ; Target_Per <- "2026 YTD" ; Index_Sel <- Index_Order
@@ -10,8 +10,8 @@ Plot_Vol_Shift <- function(Vol_Periods, Base_Per = "2021-2024", Target_Per = "20
 
     if( !is.null(Index_Sel) ) Vol_Periods <- Vol_Periods %>% filter(Name %in% Index_Sel) # keep only the chosen indexes
 
-    D <-
-        Vol_Periods %>%
+    D <- # build D through the steps below
+        Vol_Periods %>% # start from Vol_Periods
         filter(Period %in% c(Base_Per, Target_Per, "Full Sample")) %>% # the three periods the plot compares
         mutate(Period = as.character(Period)) %>% # plain text, so that spreading does not carry unused factor levels
         select(Name, Period, SD) %>% # keep only what the plot needs
@@ -24,7 +24,7 @@ Plot_Vol_Shift <- function(Vol_Periods, Base_Per = "2021-2024", Target_Per = "20
     Gap_X <- max(c(D$Base, D$Target), na.rm = TRUE) + 0.055 # where the change column sits, to the right of every arrow and label
     N_Rows <- nrow(D) # the number of rows, used to place the column header above the top row
 
-    g <-
+    g <- # build the plot in layers and store it as g
         ggplot(D) + # start the plot
         annotate("rect", xmin = Gap_X - 0.025, xmax = Gap_X + 0.025, ymin = -Inf, ymax = Inf, fill = "grey93") + # a shaded strip for the change column
         geom_segment(aes(x = Base, xend = Target, y = Name, yend = Name, color = Direction), linewidth = 1.3, arrow = arrow(length = unit(0.22, "cm"), type = "closed")) + # an arrow from the baseline to the target period

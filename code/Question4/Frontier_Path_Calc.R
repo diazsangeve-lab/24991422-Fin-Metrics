@@ -1,5 +1,5 @@
 # Traces the efficient frontier on every rebalance date, within the mandate and under the long only constraint alone, and records each asset's expected return and volatility on those dates.
-Frontier_Path_Calc <- function(R_Long, Meta, Rebal_Dates, Est_Start = lubridate::ymd(20100101), Min_Months = 60, N_Points = 30){
+Frontier_Path_Calc <- function(R_Long, Meta, Rebal_Dates, Est_Start = lubridate::ymd(20100101), Min_Months = 60, N_Points = 30){ # define Frontier_Path_Calc, with inputs R_Long, Meta, Rebal_Dates, Est_Start, Min_Months and N_Points
 
     R_Wide <- R_Long %>% select(date, Asset, Returns) %>% spread(Asset, Returns) %>% arrange(date) # one column per asset
 

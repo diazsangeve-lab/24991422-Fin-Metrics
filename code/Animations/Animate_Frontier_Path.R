@@ -1,5 +1,5 @@
 # Animates the efficient frontier within the mandate and under the long only constraint alone through every quarterly rebalance date, with the four portfolio rules moving along with it, and saves the result as a gif.
-Animate_Frontier_Path <- function(Fr, W, Pal, File, Title = "The Efficient Frontier Through Time", Subtitle = "", Caption = "Note:\nCalculation own", Width = 900, Height = 560, Fps = 10){
+Animate_Frontier_Path <- function(Fr, W, Pal, File, Title = "The Efficient Frontier Through Time", Subtitle = "", Caption = "Note:\nCalculation own", Width = 900, Height = 560, Fps = 10){ # define Animate_Frontier_Path, with inputs Fr, W, Pal, File, Width, Height and Fps, plus the title, subtitle and caption text
 
     Fronts <- Fr$Frontiers %>% mutate(State = format(date, "%B %Y")) # both frontiers on every rebalance date, labelled by month
     Ports <- W %>% distinct(date, Strategy, Vol = ExAnte_Vol, Ret = ExAnte_Ret) %>% mutate(State = format(date, "%B %Y")) # the four rules on every rebalance date
@@ -7,7 +7,7 @@ Animate_Frontier_Path <- function(Fr, W, Pal, File, Title = "The Efficient Front
     Fronts <- Fronts %>% mutate(State = factor(State, levels = Order)) # keep the states in time order
     Ports <- Ports %>% mutate(State = factor(State, levels = Order)) # the same order for the portfolios
 
-    g <-
+    g <- # build the plot in layers and store it as g
         ggplot() + # start the plot
         geom_path(data = Fronts, aes(Vol, Ret, linetype = Frontier, group = Frontier), color = "grey15", linewidth = 1.2) + # the two frontiers on each date
         geom_point(data = Ports, aes(Vol, Ret, fill = Strategy, group = Strategy), shape = 23, size = 5.5, color = "black") + # the four rules on each date

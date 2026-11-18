@@ -1,11 +1,11 @@
 # Plots trailing market dispersion against the client fund's and the typical peer's trailing alpha, alongside the average alpha in low, middle and high dispersion windows.
-Plot_Dispersion_Alpha <- function(DA, Fund_Label = "ABC Fund", Title = "Market Dispersion and Risk-Adjusted Outperformance", Subtitle = "", Caption = "Note:\nCalculation own"){
+Plot_Dispersion_Alpha <- function(DA, Fund_Label = "ABC Fund", Title = "Market Dispersion and Risk-Adjusted Outperformance", Subtitle = "", Caption = "Note:\nCalculation own"){ # define Plot_Dispersion_Alpha, with inputs DA and Fund_Label, plus the title, subtitle and caption text
 
     Long <- DA %>% select(date, Disp_Roll, Tercile, `ABC Fund` = Fund_Alpha, `Median peer` = Peer_Alpha) %>% gather(Who, Alpha, `ABC Fund`, `Median peer`) # long format, one row per window and fund
     Who_Cols <- c(`ABC Fund` = "darkorange", `Median peer` = "steelblue") # one colour each
 
-    g1 <-
-        Long %>%
+    g1 <- # build this panel of the figure in layers and store it as g1
+        Long %>% # start from Long, built above
         ggplot(aes(Disp_Roll, Alpha, color = Who)) + # dispersion along the bottom and alpha up the side
         geom_hline(yintercept = 0, color = "grey40") + # zero alpha
         geom_point(alpha = 0.6, size = 2.6) + # one point per 12 month window
@@ -20,7 +20,7 @@ Plot_Dispersion_Alpha <- function(DA, Fund_Label = "ABC Fund", Title = "Market D
     Summ <- Long %>% group_by(Tercile, Who) %>% summarise(Alpha = mean(Alpha), .groups = "drop") # the average alpha in each third of windows
     Hit <- DA %>% group_by(Tercile) %>% summarise(Hit = mean(Fund_Alpha > Peer_Alpha), .groups = "drop") # how often the fund beat the typical peer in each third
 
-    g2 <-
+    g2 <- # build this panel of the figure in layers and store it as g2
         ggplot() + # start the bar panel
         geom_col(data = Summ, aes(Tercile, Alpha, fill = Who), position = position_dodge(width = 0.75), width = 0.7) + # the fund and the typical peer side by side
         geom_text(data = Summ, aes(Tercile, Alpha, label = scales::percent(Alpha, accuracy = 0.1), group = Who), position = position_dodge(width = 0.75), vjust = -0.4, size = fmxdat::ggpts(9), fontface = "bold") + # print each average

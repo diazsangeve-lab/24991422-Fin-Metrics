@@ -1,9 +1,9 @@
 # Calculates return, risk and market exposure statistics for every fund over the months in which the benchmark is available, for funds with a minimum track record.
-Fund_Stats_Calc <- function(df, Min_Months = 36){
+Fund_Stats_Calc <- function(df, Min_Months = 36){ # define Fund_Stats_Calc, with inputs df and Min_Months
 
     if( !all(c("Name", "Group", "Returns", "BM") %in% names(df)) ) stop("... for Fund_Stats_Calc to work, first run Fund_Universe_Prep") # stop early if the universe has not been prepared
 
-    df %>%
+    df %>% # start from the input data
         filter(!is.na(BM)) %>% # only the months in which the benchmark is available
         group_by(Name, Group) %>% # one row per fund
         filter(n() >= Min_Months) %>% # funds need a minimum track record for the statistics to mean something
@@ -17,7 +17,7 @@ Fund_Stats_Calc <- function(df, Min_Months = 36){
                   TE = sd(Returns - BM) * sqrt(12), # the annualised tracking error
                   IR = mean(Returns - BM) * 12 / TE, # the information ratio, active return per unit of tracking error
                   MaxDD = max(1 - cumprod(c(1, 1 + Returns)) / cummax(cumprod(c(1, 1 + Returns)))), # the deepest peak to trough loss
-                  .groups = "drop") %>%
+                  .groups = "drop") %>% # drop the grouping once the summary is done
         mutate(Excess = Ret - BM_Ret) # the annualised return above or below the benchmark
 
 }

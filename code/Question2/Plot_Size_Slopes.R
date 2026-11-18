@@ -1,16 +1,16 @@
 # Plots stratified returns and volatility as slopegraphs, with each index's line running from calm to stressed months of every state variable.
 Plot_Size_Slopes <- function(Strat, Fund_Cols = c(`Large Caps` = "#B2182B", `Mid Caps` = "darkorange", `Small Caps` = "#4C78A8"), Title = "Size Indexes in Calm and Stressed Regimes", Subtitle = "", Caption = "Note:\nCalculation own"){
 
-    D <-
-        Strat %>%
+    D <- # build D through the steps below
+        Strat %>% # start from Strat
         select(State, Regime, Name, `Annualised return` = Ret_Ann, `Annualised volatility` = Vol_Ann) %>% # the two measures shown
         gather(Measure, Value, `Annualised return`, `Annualised volatility`) %>% # long format, one row per measure
         mutate(Regime = factor(ifelse(Regime == "Low", "Low", "High"), levels = c("Low", "High"))) # low months on the left and high months on the right
 
     Ends <- D %>% filter(Regime == "High") # the right hand end of each line, where the labels go
 
-    g <-
-        D %>%
+    g <- # build the plot in layers and store it as g
+        D %>% # start from D, built above
         ggplot(aes(Regime, Value, group = Name, color = Name)) + # regimes along the bottom and one line per index
         geom_hline(data = tibble(Measure = "Annualised return"), aes(yintercept = 0), color = "grey50", linetype = "dashed") + # zero return in the return panels
         geom_line(linewidth = 1.1) + # the slope from low to high months
@@ -23,6 +23,6 @@ Plot_Size_Slopes <- function(Strat, Fund_Cols = c(`Large Caps` = "#B2182B", `Mid
         fmxdat::theme_fmx(title.size = fmxdat::ggpts(30), subtitle.size = fmxdat::ggpts(26), caption.size = fmxdat::ggpts(22), CustomCaption = T) + # the clean course theme with readable text sizes
         labs(x = "Months in the bottom (Low) and top (High) quintile of each state variable", y = "", title = Title, subtitle = Subtitle, caption = Caption, color = "") # axis names, title and note
 
-    g
+    g # return the finished plot
 
 }

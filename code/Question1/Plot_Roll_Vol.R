@@ -1,12 +1,12 @@
 # Plots rolling volatility as small multiples, with every other series greyed out behind the highlighted one and its recent peak labelled.
-Plot_Roll_Vol <- function(df, Highlight_From = lubridate::ymd(20260101), Ncol = 3, Title = "Rolling Realised Volatility", Subtitle = "", Caption = "Note:\nCalculation own"){
+Plot_Roll_Vol <- function(df, Highlight_From = lubridate::ymd(20260101), Ncol = 3, Title = "Rolling Realised Volatility", Subtitle = "", Caption = "Note:\nCalculation own"){ # define Plot_Roll_Vol, with inputs df, Highlight_From and Ncol, plus the title, subtitle and caption text
 
     if( !"RollSD" %in% names(df)) stop("... for Plot_Roll_Vol to work, first run Roll_SD_Calc to create the 'RollSD' column") # stop early if the rolling numbers are missing
 
     Background <- df %>% rename(Group = Name) # a copy without the facet variable, so that every series appears in every panel
     Peaks <- df %>% filter(date >= Highlight_From) %>% group_by(Name) %>% slice_max(RollSD, n = 1, with_ties = FALSE) %>% ungroup() # the highest reading of each series in the highlighted period
 
-    g <-
+    g <- # build the plot in layers and store it as g
         ggplot() + # start an empty plot, since each layer brings its own data
         annotate("rect", xmin = Highlight_From, xmax = max(df$date), ymin = -Inf, ymax = Inf, fill = "steelblue", alpha = 0.12) + # shade the recent period that the question is about
         geom_line(data = Background, aes(date, RollSD, group = Group), color = "grey82", linewidth = 0.35) + # every series in light grey, as context

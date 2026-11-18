@@ -1,10 +1,10 @@
 # Plots monthly rank correlations between own and vendor scores with inline labels, next to a heatmap of what each vendor factor tracks on average.
-Plot_Score_Cor <- function(df, Diag = NULL, Title = "Do the Scores Agree?", Subtitle = "", Caption = "Note:\nCalculation own"){
+Plot_Score_Cor <- function(df, Diag = NULL, Title = "Do the Scores Agree?", Subtitle = "", Caption = "Note:\nCalculation own"){ # define Plot_Score_Cor, with inputs df and Diag, plus the title, subtitle and caption text
 
     Ends <- df %>% group_by(Label) %>% filter(date == max(date)) %>% ungroup() # the last month of each pair, where the inline labels go
 
-    g_main <-
-        df %>%
+    g_main <- # build this panel of the figure in layers and store it as g_main
+        df %>% # start from the input data
         group_by(Label) %>% # work out each pair's own average
         mutate(Avg = mean(Rho)) %>% # the average rank correlation of the pair
         ungroup() %>% # remove the grouping again
@@ -22,8 +22,8 @@ Plot_Score_Cor <- function(df, Diag = NULL, Title = "Do the Scores Agree?", Subt
 
     if( is.null(Diag) ) return(g_main + labs(title = Title, subtitle = Subtitle, caption = Caption)) # without diagnostics the main panel is the whole figure
 
-    g_diag <-
-        Diag %>%
+    g_diag <- # build this panel of the figure in layers and store it as g_diag
+        Diag %>% # start from Diag
         ggplot() + # start the diagnostic panel
         geom_tile(aes(Vendor, Own, fill = Rho), color = "white", linewidth = 0.6) + # one tile per own measure and vendor factor
         geom_text(aes(Vendor, Own, label = sprintf("%.2f", Rho)), size = fmxdat::ggpts(7.5), fontface = "bold") + # print the average rank correlation in each tile

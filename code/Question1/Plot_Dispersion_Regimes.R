@@ -1,8 +1,8 @@
 # Plots the share of active managers beating the benchmark and the spread of their excess returns in each dispersion regime, following the dispersion of active managers practical.
-Plot_Dispersion_Regimes <- function(Opp, N_Groups = 5, Title = "Manager Outcomes by Dispersion Regime", Subtitle = "", Caption = "Note:\nCalculation own"){
+Plot_Dispersion_Regimes <- function(Opp, N_Groups = 5, Title = "Manager Outcomes by Dispersion Regime", Subtitle = "", Caption = "Note:\nCalculation own"){ # define Plot_Dispersion_Regimes, with inputs Opp and N_Groups, plus the title, subtitle and caption text
 
-    D <-
-        Opp %>%
+    D <- # build D through the steps below
+        Opp %>% # start from the alpha opportunity data
         tidyr::drop_na(Disp12, Share_Outperform, Mgr_Spread) %>% # only months with all three measures
         mutate(Regime = ntile(Disp12, N_Groups)) %>% # sort the months into groups by trailing dispersion
         group_by(Regime) %>% # one bar per group

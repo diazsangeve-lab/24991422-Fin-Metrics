@@ -1,9 +1,9 @@
 # Calculates the rolling beta of every fund to the benchmark over a trailing window of months, keeping only windows of consecutive months.
-Roll_Beta_Calc <- function(df, NSel = 36){
+Roll_Beta_Calc <- function(df, NSel = 36){ # define Roll_Beta_Calc, with inputs df and NSel
 
     if( !all(c("date", "Name", "Group", "Returns", "BM") %in% names(df)) ) stop("... for Roll_Beta_Calc to work, first run Fund_Universe_Prep") # stop early if the universe has not been prepared
 
-    df %>%
+    df %>% # start from the input data
         filter(!is.na(BM)) %>% # only the months in which the benchmark is available
         arrange(date) %>% # order by date before rolling
         group_by(Name, Group) %>% # roll within each fund

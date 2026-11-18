@@ -1,11 +1,11 @@
 # Plots every fund's market beta against its annualised alpha, so that funds offering return beyond the market stand apart, with the client fund highlighted.
-Plot_Beta_Alpha <- function(Stats, Fund_Label = "ABC Fund", Title = "Market Beta and Alpha, 2015 to 2025", Subtitle = "", Caption = "Note:\nCalculation own"){
+Plot_Beta_Alpha <- function(Stats, Fund_Label = "ABC Fund", Title = "Market Beta and Alpha, 2015 to 2025", Subtitle = "", Caption = "Note:\nCalculation own"){ # define Plot_Beta_Alpha, with inputs Stats and Fund_Label, plus the title, subtitle and caption text
 
     Peers <- Stats %>% filter(Group == "Peer") # the peer funds
     Fund <- Stats %>% filter(Group == Fund_Label) # the client fund
     Med_Beta <- median(Peers$Beta) # the typical peer's beta
 
-    g <-
+    g <- # build the plot in layers and store it as g
         ggplot() + # start the plot
         annotate("rect", xmin = -Inf, xmax = Med_Beta, ymin = 0, ymax = Inf, fill = "darkorange", alpha = 0.07) + # shade the zone of low market exposure and positive alpha
         geom_hline(yintercept = 0, color = "grey40") + # zero alpha
@@ -19,6 +19,6 @@ Plot_Beta_Alpha <- function(Stats, Fund_Label = "ABC Fund", Title = "Market Beta
         Slide_Theme() + # the slide theme
         labs(x = "Market beta to the Capped SWIX", y = "Annualised alpha", title = Title, subtitle = Subtitle, caption = Caption) # axis names, title and note
 
-    g
+    g # return the finished plot
 
 }

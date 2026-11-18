@@ -1,5 +1,5 @@
 # Plots calendar year returns of a fund next to its benchmark, with the yearly difference printed above each pair, in the spirit of the calendar returns table of Practical 2.
-Plot_Calendar_Returns <- function(df, Fund_Name = "SafeCore", BM_Name = "Capped SWIX", Title = "Calendar Year Returns", Subtitle = "", Caption = "Note:\nCalculation own"){
+Plot_Calendar_Returns <- function(df, Fund_Name = "SafeCore", BM_Name = "Capped SWIX", Title = "Calendar Year Returns", Subtitle = "", Caption = "Note:\nCalculation own"){ # define Plot_Calendar_Returns, with inputs df, Fund_Name and BM_Name, plus the title, subtitle and caption text
 
     Yr <- df %>% mutate(Year = lubridate::year(date)) %>% group_by(Name, Year) %>% summarise(Ret = prod(1 + Returns) - 1, Days = n(), .groups = "drop") # each portfolio's compounded return in every calendar year
     Gap <- Yr %>% select(Name, Year, Ret) %>% spread(Name, Ret) %>% mutate(Diff = .data[[Fund_Name]] - .data[[BM_Name]], Top = pmax(.data[[Fund_Name]], .data[[BM_Name]], 0)) # the fund's lead or lag in each year

@@ -1,15 +1,15 @@
 # Plots how much of each mandate limit every portfolio rule uses on average as a circular barplot, with a ring marking a fully used limit and gaps separating the rules.
-Plot_Constraint_Radial <- function(W, Pal, Caps = c(Bonds = 0.25, Equity = 0.75, Commodity = 0.15), Global_Cap = 0.60, Single_Cap = 0.35, Title = "How Hard Each Rule Leans on the Mandate", Subtitle = "", Caption = "Note:\nCalculation own"){
+Plot_Constraint_Radial <- function(W, Pal, Caps = c(Bonds = 0.25, Equity = 0.75, Commodity = 0.15), Global_Cap = 0.60, Single_Cap = 0.35, Title = "How Hard Each Rule Leans on the Mandate", Subtitle = "", Caption = "Note:\nCalculation own"){ # define Plot_Constraint_Radial, with inputs W, Pal, Caps, Global_Cap and Single_Cap, plus the title, subtitle and caption text
 
-    Use <-
-        W %>%
+    Use <- # build Use through the steps below
+        W %>% # start from W
         group_by(Strategy, date) %>% # one set of exposures per rule and date
         summarise(`Bonds (25%)` = sum(Weight[Class == "Bonds"]) / Caps[["Bonds"]], # bond exposure as a share of its limit
                   `Equity (75%)` = sum(Weight[Class == "Equity"]) / Caps[["Equity"]], # equity exposure as a share of its limit
                   `Commodities (15%)` = sum(Weight[Class == "Commodity"]) / Caps[["Commodity"]], # commodity exposure as a share of its limit
                   `Global (60%)` = sum(Weight[Region == "Global"]) / Global_Cap, # offshore exposure as a share of its limit
                   `Largest asset (35%)` = max(Weight) / Single_Cap, # the largest single holding as a share of its limit
-                  .groups = "drop") %>%
+                  .groups = "drop") %>% # drop the grouping once the summary is done
         gather(Limit, Used, -Strategy, -date) %>% # long format, one row per limit
         group_by(Strategy, Limit) %>% summarise(Used = mean(Used), .groups = "drop") %>% # the average use over all rebalance dates
         mutate(Strategy = factor(Strategy, levels = names(Pal$Strategy))) %>% # the rules in a fixed order

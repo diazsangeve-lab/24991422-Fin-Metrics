@@ -146,23 +146,23 @@ The universe combines four offshore regional equity indexes and United States re
 
 ```{r q4_universe, fig.width = 11, fig.height = 7, fig.cap = "The Investable Universe Through Time"}
 Q4_Meta <- tribble(~Asset, ~Source, ~Source_Name, ~Class, ~Region, # the universe, each asset's source, asset class and region
-                   "US equity", "MSCI", "MSCI_USA", "Equity", "Global",
-                   "Europe equity", "MSCI", "MSCI_EU", "Equity", "Global",
-                   "Japan equity", "MSCI", "MSCI_Jap", "Equity", "Global",
-                   "EM equity", "MSCI", "MSCI_EM", "Equity", "Global",
-                   "US REITs", "MSCI", "MSCI_USREIT", "Equity", "Global",
-                   "US 10Yr bond", "Bonds", "US_10Yr", "Bonds", "Global",
-                   "Euro 10Yr bond", "Bonds", "EURO_10Yr", "Bonds", "Global",
-                   "UK 10Yr bond", "Bonds", "UK_10Yr", "Bonds", "Global",
-                   "Commodities", "Commods", "Bcom_Index", "Commodity", "Global",
-                   "Gold", "Commods", "Gold", "Commodity", "Global",
-                   "SA large caps", "Local", "Top 40", "Equity", "Local",
-                   "SA mid caps", "Local", "MidCaps", "Equity", "Local",
-                   "SA momentum", "Local", "Mom", "Equity", "Local",
-                   "SA value", "Local", "Val", "Equity", "Local",
-                   "SA bonds", "LCL", "FTSE/JSE All Bond", "Bonds", "Local",
-                   "SA inflation-linked", "LCL", "FTSE/JSE SA Inflation-Linked Government Bonds", "Bonds", "Local",
-                   "SA property", "LCL", "FTSE/JSE SA Listed Property", "Equity", "Local")
+                   "US equity", "MSCI", "MSCI_USA", "Equity", "Global", # one asset, with its label, source file, series name, asset class and region
+                   "Europe equity", "MSCI", "MSCI_EU", "Equity", "Global", # one asset, with its label, source file, series name, asset class and region
+                   "Japan equity", "MSCI", "MSCI_Jap", "Equity", "Global", # one asset, with its label, source file, series name, asset class and region
+                   "EM equity", "MSCI", "MSCI_EM", "Equity", "Global", # one asset, with its label, source file, series name, asset class and region
+                   "US REITs", "MSCI", "MSCI_USREIT", "Equity", "Global", # one asset, with its label, source file, series name, asset class and region
+                   "US 10Yr bond", "Bonds", "US_10Yr", "Bonds", "Global", # one asset, with its label, source file, series name, asset class and region
+                   "Euro 10Yr bond", "Bonds", "EURO_10Yr", "Bonds", "Global", # one asset, with its label, source file, series name, asset class and region
+                   "UK 10Yr bond", "Bonds", "UK_10Yr", "Bonds", "Global", # one asset, with its label, source file, series name, asset class and region
+                   "Commodities", "Commods", "Bcom_Index", "Commodity", "Global", # one asset, with its label, source file, series name, asset class and region
+                   "Gold", "Commods", "Gold", "Commodity", "Global", # one asset, with its label, source file, series name, asset class and region
+                   "SA large caps", "Local", "Top 40", "Equity", "Local", # one asset, with its label, source file, series name, asset class and region
+                   "SA mid caps", "Local", "MidCaps", "Equity", "Local", # one asset, with its label, source file, series name, asset class and region
+                   "SA momentum", "Local", "Mom", "Equity", "Local", # one asset, with its label, source file, series name, asset class and region
+                   "SA value", "Local", "Val", "Equity", "Local", # one asset, with its label, source file, series name, asset class and region
+                   "SA bonds", "LCL", "FTSE/JSE All Bond", "Bonds", "Local", # one asset, with its label, source file, series name, asset class and region
+                   "SA inflation-linked", "LCL", "FTSE/JSE SA Inflation-Linked Government Bonds", "Bonds", "Local", # one asset, with its label, source file, series name, asset class and region
+                   "SA property", "LCL", "FTSE/JSE SA Listed Property", "Equity", "Local") # one asset, with its label, source file, series name, asset class and region
 Bond_Rets <- Bond_TRI_Calc(Bond_Yields, Bond_Sel = c("US_10Yr", "EURO_10Yr", "UK_10Yr"), Maturity = 10) # monthly bond returns built from yields, explained in the next section
 Q4_End <- lubridate::ymd(20260930) # the last month in the data
 Asset_Rets <- Asset_Returns_Build(Q4_Meta, MSCI, Commods, Bond_Rets, Idx_Daily, LCL_Yield_Proxies) %>% filter(date <= Q4_End) # monthly returns for every asset

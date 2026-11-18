@@ -1,8 +1,8 @@
 # Plots each portfolio's average composite factor score as lollipops in small multiples, highlighting the fund and its benchmark against the strategy indexes.
-Plot_Factor_Lollipops <- function(df, Start_Date, Fund = "SafeCore", BM = "Capped SWIX", Port_Order = NULL, Title = "Composite Factor Scores by Strategy", Subtitle = "", Caption = "Note:\nCalculation own"){
+Plot_Factor_Lollipops <- function(df, Start_Date, Fund = "SafeCore", BM = "Capped SWIX", Port_Order = NULL, Title = "Composite Factor Scores by Strategy", Subtitle = "", Caption = "Note:\nCalculation own"){ # define Plot_Factor_Lollipops, with inputs df, Start_Date, Fund, BM and Port_Order, plus the title, subtitle and caption text
 
-    Avg <-
-        df %>%
+    Avg <- # build Avg through the steps below
+        df %>% # start from the input data
         filter(date >= Start_Date) %>% # the period over which exposures are averaged
         group_by(Portfolio, Factor) %>% # one number per portfolio and factor
         summarise(Score = mean(Score, na.rm = T), .groups = "drop") %>% # the average composite score over the period
@@ -10,8 +10,8 @@ Plot_Factor_Lollipops <- function(df, Start_Date, Fund = "SafeCore", BM = "Cappe
 
     if( !is.null(Port_Order) ) Avg <- Avg %>% mutate(Portfolio = factor(Portfolio, levels = rev(Port_Order))) # put the portfolios in the order given, top to bottom
 
-    g <-
-        Avg %>%
+    g <- # build the plot in layers and store it as g
+        Avg %>% # start from Avg, built above
         ggplot() + # start the plot
         geom_vline(xintercept = 0, color = "grey40") + # zero is the average stock
         geom_segment(aes(x = 0, xend = Score, y = Portfolio, yend = Portfolio, color = Role), linewidth = 0.8) + # the stick of each lollipop

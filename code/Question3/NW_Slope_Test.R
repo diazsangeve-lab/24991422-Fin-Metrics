@@ -1,5 +1,5 @@
 # Regresses one column on another and tests the slope with Newey-West standard errors, which allow for the autocorrelation created by overlapping windows.
-NW_Slope_Test <- function(df, Y, X, Lag = 12){
+NW_Slope_Test <- function(df, Y, X, Lag = 12){ # define NW_Slope_Test, with inputs df, Y, X and Lag
 
     m <- lm(as.formula(paste(Y, "~", X)), data = df) # the simple regression
     ct <- lmtest::coeftest(m, vcov = sandwich::NeweyWest(m, lag = Lag)) # coefficients with Newey-West standard errors

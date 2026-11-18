@@ -1,5 +1,5 @@
 # Draws random long-only portfolios that satisfy every condition of the mandate on one rebalance date and records their expected risk and return, in the spirit of the random bounded weights of Practical 2.
-Random_Portfolios_Calc <- function(R_Long, Meta, Date, N_Draws = 20000, Est_Start = lubridate::ymd(20100101), Min_Months = 60, Seed = 4321){
+Random_Portfolios_Calc <- function(R_Long, Meta, Date, N_Draws = 20000, Est_Start = lubridate::ymd(20100101), Min_Months = 60, Seed = 4321){ # define Random_Portfolios_Calc, with inputs R_Long, Meta, Date, N_Draws, Est_Start, Min_Months and Seed
 
     set.seed(Seed) # make the draws reproducible
     Hist <- R_Long %>% select(date, Asset, Returns) %>% spread(Asset, Returns) %>% arrange(date) %>% filter(date <= Date) # returns known on the date

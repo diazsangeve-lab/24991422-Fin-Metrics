@@ -1,5 +1,5 @@
 # Plots the distribution of daily returns for each portfolio with its Value at Risk and Expected Shortfall marked by method, so that the size of the left tail can be compared.
-Plot_VaR_ES <- function(df, Risk_df, Title = "Daily Tail Risk", Subtitle = "", Caption = "Note:\nCalculation own"){
+Plot_VaR_ES <- function(df, Risk_df, Title = "Daily Tail Risk", Subtitle = "", Caption = "Note:\nCalculation own"){ # define Plot_VaR_ES, with inputs df and Risk_df, plus the title, subtitle and caption text
 
     Method_Cols <- c(Historical = "#B2182B", Gaussian = "#4C78A8", Modified = "#E08214") # one colour per method
     Lines <- Risk_df %>% mutate(x = -Loss) # the measures as points on the return axis

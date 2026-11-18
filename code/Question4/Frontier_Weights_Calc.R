@@ -1,5 +1,5 @@
 # Traces the efficient frontier within the mandate on one rebalance date and records the weights of every frontier portfolio, following the frontier construction in Practical 3 bonus 2.
-Frontier_Weights_Calc <- function(R_Long, Meta, Date, Est_Start = lubridate::ymd(20100101), Min_Months = 60, N_Points = 40){
+Frontier_Weights_Calc <- function(R_Long, Meta, Date, Est_Start = lubridate::ymd(20100101), Min_Months = 60, N_Points = 40){ # define Frontier_Weights_Calc, with inputs R_Long, Meta, Date, Est_Start, Min_Months and N_Points
 
     Hist <- R_Long %>% select(date, Asset, Returns) %>% spread(Asset, Returns) %>% arrange(date) %>% filter(date <= Date) # returns known on the date
     Eligible <- names(Hist)[-1][colSums(!is.na(Hist[, -1])) >= Min_Months] # assets with enough history
@@ -14,7 +14,7 @@ Frontier_Weights_Calc <- function(R_Long, Meta, Date, Est_Start = lubridate::ymd
     map_df(Targets, function(m){ # repeat for each target
         w <- quadprog::solve.QP(2 * Est$Sigma + diag(1e-10, n), rep(0, n), cbind(Est$Mu, Cons$Amat), c(m, Cons$bvec), meq = 2)$solution # the lowest variance portfolio with that expected return
         tibble(Vol = sqrt(as.numeric(t(w) %*% Est$Sigma %*% w) * 12), Ret = m * 12, Asset = Eligible, Weight = pmax(w, 0)) # its annualised risk, return and weights
-    }) %>%
+    }) %>% # close the inner function and pass its results on
         group_by(Vol) %>% mutate(Weight = Weight / sum(Weight)) %>% ungroup() # rescale away numerical dust
 
 }

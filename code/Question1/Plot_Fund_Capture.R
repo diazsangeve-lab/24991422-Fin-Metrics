@@ -1,6 +1,6 @@
 # Plots the fund's market capture asymmetry quadrant alongside its key return and risk measures relative to the benchmark, as two panels in one figure.
-Plot_Fund_Capture <- function(Stats_All, BM_Name = "Capped SWIX", Fund_Name = "SafeCore", Early = "2015-2026", Late = "2020-2026",
-                              Title = "Return and Risk Profile of SafeCore Against the Capped SWIX", Subtitle = "", Caption = "Note:\nCalculation own"){
+Plot_Fund_Capture <- function(Stats_All, BM_Name = "Capped SWIX", Fund_Name = "SafeCore", Early = "2015-2026", Late = "2020-2026", # define Plot_Fund_Capture, with inputs Stats_All, BM_Name, Fund_Name, Early and Late
+                              Title = "Return and Risk Profile of SafeCore Against the Capped SWIX", Subtitle = "", Caption = "Note:\nCalculation own"){ # the default title, subtitle and caption text
 
     # For stepping through uncomment:
     # BM_Name <- "Capped SWIX" ; Fund_Name <- "SafeCore" ; Early <- "2015-2026" ; Late <- "2020-2026"
@@ -14,7 +14,7 @@ Plot_Fund_Capture <- function(Stats_All, BM_Name = "Capped SWIX", Fund_Name = "S
     Cap_Late <- Cap_Data %>% filter(Period == Late) # the later period, where the arrow ends
     BM_Point <- tibble(Up = 1, Down = 1) # the benchmark always captures exactly its own moves
 
-    g1 <-
+    g1 <- # build this panel of the figure in layers and store it as g1
         ggplot() + # start the panel
         annotate("rect", xmin = 1, xmax = 1.2, ymin = 0.85, ymax = 1, fill = "seagreen", alpha = 0.08) + # shade the zone where the fund gains more than the market in up months and loses less in down months
         annotate("rect", xmin = 0.95, xmax = 1.2, ymin = 1, ymax = 1.2, fill = "firebrick", alpha = 0.06) + # shade the zone where the fund loses more than the market in down months
@@ -42,8 +42,8 @@ Plot_Fund_Capture <- function(Stats_All, BM_Name = "Capped SWIX", Fund_Name = "S
 
     Metric_Order <- c("Return (Ann.)", "SD (Ann.)", "Max Drawdown", "CVaR Loss (95%)") # the measures shown, from top to bottom
 
-    g2 <-
-        Stats_All %>%
+    g2 <- # build this panel of the figure in layers and store it as g2
+        Stats_All %>% # start from the statistics table
         mutate(`CVaR Loss (95%)` = abs(`Modified CVaR (95%)`)) %>% # show the tail loss as a positive number so that all bars point the same way
         select(Name, Period, all_of(Metric_Order)) %>% # keep only the measures shown
         gather(Metric, Value, -Name, -Period) %>% # long format, one row per fund, period and measure

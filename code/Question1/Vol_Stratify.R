@@ -1,5 +1,5 @@
 # Stratifies months by a set of state variables and compares index volatility in the high and low states with normal times.
-Vol_Stratify <- function(df, States, Hi_Q = 0.8, Lo_Q = 0.2, Ann = 252){
+Vol_Stratify <- function(df, States, Hi_Q = 0.8, Lo_Q = 0.2, Ann = 252){ # define Vol_Stratify, with inputs df, States, Hi_Q, Lo_Q and Ann
 
     # For stepping through uncomment:
     # States <- State_df ; Hi_Q <- 0.8 ; Lo_Q <- 0.2
@@ -8,8 +8,8 @@ Vol_Stratify <- function(df, States, Hi_Q = 0.8, Lo_Q = 0.2, Ann = 252){
 
     df <- df %>% mutate(YM = format(date, "%Y%B")) # add a year and month label to match against the states
 
-    States <-
-        States %>%
+    States <- # build States through the steps below
+        States %>% # start from States, built above
         filter(YM %in% unique(df$YM)) %>% # only use months that are also in the return sample
         group_by(State) %>% # the cut-offs are specific to each state variable
         mutate(Regime = ifelse(Value >= quantile(Value, Hi_Q, na.rm = T), "High", # months in the top quintile of the state variable
@@ -17,14 +17,14 @@ Vol_Stratify <- function(df, States, Hi_Q = 0.8, Lo_Q = 0.2, Ann = 252){
         ungroup() %>% # remove the grouping again
         filter(Regime != "Normal") # only the extreme months are compared with the full sample
 
-    Full <-
-        df %>%
+    Full <- # build Full through the steps below
+        df %>% # start from df, built above
         group_by(Name) %>% # one number per index
         summarise(Full_SD = sd(Returns, na.rm = T) * sqrt(Ann)) # the unconditional volatility of each index
 
-    States %>%
+    States %>% # start from States, built above
         group_split(State, Regime) %>% # treat every state and regime combination on its own
-        map_df(~df %>%
+        map_df(~df %>% # repeat the calculation for each group and stack the results
                    filter(YM %in% .x$YM) %>% # keep only the days that fall in this regime's months
                    group_by(Name) %>% # one number per index
                    summarise(SD = sd(Returns, na.rm = T) * sqrt(Ann)) %>% # volatility of the index inside the regime

@@ -1,8 +1,8 @@
 # Plots the largest contributors to portfolio risk as arrows running from each stock's share of capital to its share of risk.
-Plot_Top_Risk <- function(df, Top_N = 12, Title = "Top Contributors to Portfolio Risk", Subtitle = "", Caption = "Note:\nCalculation own"){
+Plot_Top_Risk <- function(df, Top_N = 12, Title = "Top Contributors to Portfolio Risk", Subtitle = "", Caption = "Note:\nCalculation own"){ # define Plot_Top_Risk, with inputs df and Top_N, plus the title, subtitle and caption text
 
-    D <-
-        df %>%
+    D <- # build D through the steps below
+        df %>% # start from the input data
         arrange(desc(Risk_Share)) %>% # rank the stocks by their contribution to risk
         slice_head(n = Top_N) %>% # keep only the largest contributors
         mutate(Label = forcats::fct_reorder(glue::glue("{Tickers} ({coalesce(Sector, 'Unclassified')})"), Risk_Share), # label each stock with its sector and order the rows
@@ -11,8 +11,8 @@ Plot_Top_Risk <- function(df, Top_N = 12, Title = "Top Contributors to Portfolio
 
     X_Text <- max(c(D$Risk_Share, D$Weight)) + 0.03 # where the multiple column sits
 
-    g <-
-        D %>%
+    g <- # build the plot in layers and store it as g
+        D %>% # start from D, built above
         ggplot() + # start the plot
         geom_segment(aes(x = Weight, xend = Risk_Share, y = Label, yend = Label, color = Type), linewidth = 1.1, arrow = arrow(length = unit(0.18, "cm"), type = "closed")) + # an arrow from the share of capital to the share of risk
         geom_point(aes(Weight, Label), color = "grey45", size = 2.5) + # the share of capital at the start of each arrow

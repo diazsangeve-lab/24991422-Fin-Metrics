@@ -1,8 +1,8 @@
 # Plots a fund's rolling volatility against its benchmark with inline labels, and a strip underneath showing the gap between the two.
-Plot_Roll_Vol_Gap <- function(df, Fund = "SafeCore", BM = "Capped SWIX", NSel = 252, Title = "Rolling Volatility Relative to the Benchmark", Subtitle = "", Caption = "Note:\nCalculation own"){
+Plot_Roll_Vol_Gap <- function(df, Fund = "SafeCore", BM = "Capped SWIX", NSel = 252, Title = "Rolling Volatility Relative to the Benchmark", Subtitle = "", Caption = "Note:\nCalculation own"){ # define Plot_Roll_Vol_Gap, with inputs df, Fund, BM and NSel, plus the title, subtitle and caption text
 
-    Wide <-
-        df %>%
+    Wide <- # build Wide through the steps below
+        df %>% # start from the input data
         filter(Name %in% c(Fund, BM)) %>% # keep only the fund and its benchmark
         Roll_SD_Calc(NSel = NSel) %>% # rolling annualised volatility, using the function from Part A
         select(date, Name, RollSD) %>% # keep only what the plot needs
@@ -14,8 +14,8 @@ Plot_Roll_Vol_Gap <- function(df, Fund = "SafeCore", BM = "Capped SWIX", NSel = 
     Ends <- Wide %>% filter(date == max(date)) # the last date, where the inline labels go
     Year_Breaks <- seq(lubridate::floor_date(min(Wide$date), "year"), max(Wide$date), by = "year") # one tick per year, only where there is data
 
-    g_top <-
-        Wide %>%
+    g_top <- # build this panel of the figure in layers and store it as g_top
+        Wide %>% # start from Wide, built above
         ggplot() + # start the main panel
         geom_ribbon(aes(date, ymin = BM_SD, ymax = pmax(Fund_SD, BM_SD)), fill = "firebrick", alpha = 0.35) + # red where the fund is more volatile than the benchmark
         geom_ribbon(aes(date, ymin = pmin(Fund_SD, BM_SD), ymax = BM_SD), fill = "steelblue", alpha = 0.35) + # blue where the fund is calmer than the benchmark
@@ -29,8 +29,8 @@ Plot_Roll_Vol_Gap <- function(df, Fund = "SafeCore", BM = "Capped SWIX", NSel = 
         theme(axis.text.x = element_blank()) + # the dates are shown on the strip underneath
         labs(x = "", y = "Rolling annualised volatility") # axis names
 
-    g_gap <-
-        Wide %>%
+    g_gap <- # build this panel of the figure in layers and store it as g_gap
+        Wide %>% # start from Wide, built above
         ggplot() + # start the gap strip
         geom_col(aes(date, Gap, fill = Gap > 0), width = 1) + # one thin bar per day, coloured by the sign of the gap
         geom_hline(yintercept = 0, color = "grey30") + # zero means the two are equally volatile

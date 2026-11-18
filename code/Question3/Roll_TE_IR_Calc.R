@@ -1,7 +1,7 @@
 # Calculates the rolling tracking error and information ratio of every fund against the benchmark over a trailing window of consecutive months, following the tracking error and information ratio measures of Practical 1.
-Roll_TE_IR_Calc <- function(df, NSel = 36){
+Roll_TE_IR_Calc <- function(df, NSel = 36){ # define Roll_TE_IR_Calc, with inputs df and NSel
 
-    df %>%
+    df %>% # start from the input data
         filter(!is.na(BM)) %>% # only the months in which the benchmark is available
         mutate(Active = Returns - BM) %>% # each month's return above or below the benchmark
         arrange(date) %>% # order by date before rolling

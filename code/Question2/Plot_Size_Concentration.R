@@ -4,8 +4,8 @@ Plot_Size_Concentration <- function(Conc, Overlap_From = NULL, Overlap_Y = 20, F
     Ends <- Conc %>% filter(date == max(date)) # the last month, where the line labels go
     Breaks <- seq(lubridate::floor_date(min(Conc$date), "year"), max(Conc$date), by = "2 years") # date labels every two years that stop at the last month, so that the label space has no empty years
 
-    g <-
-        Conc %>%
+    g <- # build the plot in layers and store it as g
+        Conc %>% # start from Conc
         ggplot() + # start the plot
         geom_line(aes(date, Eff_N, color = Fund), linewidth = 1) + # the effective number of stocks in each index
         geom_text(data = Ends, aes(date, Eff_N, label = glue::glue("{Fund} ({round(Eff_N)})"), color = Fund), hjust = -0.08, fontface = "bold", size = fmxdat::ggpts(8.5)) + # label each line with its latest value

@@ -1,5 +1,5 @@
 # Draws a minimal version of the peer fan chart with no axes or text, used as decorative artwork on the title slide of the presentation.
-Plot_Cover_Art <- function(Pct){
+Plot_Cover_Art <- function(Pct){ # define Plot_Cover_Art, with input Pct
 
     D <- Pct %>% filter(!is.na(Fund_Ret)) # the months in which the fund has a full window
 

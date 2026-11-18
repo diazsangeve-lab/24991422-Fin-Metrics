@@ -1,5 +1,5 @@
 # Plots returns over several trailing horizons for each index as grouped bars, so that the ranking of the indexes over short and long horizons can be compared.
-Plot_Horizon_Returns <- function(Hz, Cols, Title = "Returns Over Different Horizons", Subtitle = "", Caption = "Note:\nCalculation own"){
+Plot_Horizon_Returns <- function(Hz, Cols, Title = "Returns Over Different Horizons", Subtitle = "", Caption = "Note:\nCalculation own"){ # define Plot_Horizon_Returns, with inputs Hz and Cols, plus the title, subtitle and caption text
 
     ggplot(Hz, aes(Horizon, Ret, fill = Name)) + # horizons along the bottom
         geom_hline(yintercept = 0, color = "grey40") + # zero return

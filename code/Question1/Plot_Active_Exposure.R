@@ -1,8 +1,8 @@
 # Plots a fund's active factor exposures as small multiples, each filling the focal factor's tilt and showing the other factors as grey lines behind it.
-Plot_Active_Exposure <- function(df, Fund = "SafeCore", BM = "Capped SWIX", Title = "Active Factor Exposures", Subtitle = "", Caption = "Note:\nCalculation own"){
+Plot_Active_Exposure <- function(df, Fund = "SafeCore", BM = "Capped SWIX", Title = "Active Factor Exposures", Subtitle = "", Caption = "Note:\nCalculation own"){ # define Plot_Active_Exposure, with inputs df, Fund and BM, plus the title, subtitle and caption text
 
-    Active <-
-        df %>%
+    Active <- # build Active through the steps below
+        df %>% # start from the input data
         filter(Portfolio %in% c(Fund, BM)) %>% # keep only the fund and its benchmark
         select(date, Portfolio, Factor, Score) %>% # keep only what the plot needs
         spread(Portfolio, Score) %>% # one column per portfolio
@@ -11,8 +11,8 @@ Plot_Active_Exposure <- function(df, Fund = "SafeCore", BM = "Capped SWIX", Titl
 
     Background <- Active %>% rename(Group = Factor) # a copy without the facet variable, so that every factor appears in every panel
 
-    g <-
-        Active %>%
+    g <- # build the plot in layers and store it as g
+        Active %>% # start from Active, built above
         ggplot() + # start the plot
         geom_line(data = Background, aes(date, Active, group = Group), color = "grey85", linewidth = 0.35) + # every other factor in light grey, as context
         geom_ribbon(aes(date, ymin = 0, ymax = pmax(Active, 0)), fill = "darkorange", alpha = 0.75) + # the overweight part of the focal factor

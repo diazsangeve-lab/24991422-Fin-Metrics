@@ -318,7 +318,7 @@ This part evaluates whether SafeCore, a fund built without explicit reference to
 SafeCore_Rets <- Holdings_Returns_Calc(SafeCore, Stock_Returns, Start_Date = lubridate::ymd(20150101), Ret_Cap = 0.25, Port_Name = "SafeCore") # daily returns of SafeCore rebuilt from its monthly holdings
 BM_Rets <- Holdings_Returns_Calc(Monthly_Constituents %>% filter(Fund == "CappedSWIX"), Stock_Returns, Start_Date = lubridate::ymd(20150101), Ret_Cap = 0.25, Port_Name = "Capped SWIX") # daily returns of the Capped SWIX rebuilt in exactly the same way
 J433_Published <- Idx_Daily %>% filter(Tickers == "J433") %>% select(date, Returns) %>% mutate(Name = "Published") # the published index returns, used only to validate the rebuild
-Rebuild_Check <-
+Rebuild_Check <- # build Rebuild_Check through the steps below
     bind_rows(BM_Rets %>% mutate(Name = "Rebuilt"), J433_Published) %>% # stack the rebuilt and published benchmark returns
     group_by(Name, Year = as.character(lubridate::year(date))) %>% # one number per series per calendar year
     summarise(Return = prod(1 + Returns) - 1, .groups = "drop") %>% # chain the daily returns into a calendar year return
@@ -344,7 +344,7 @@ Plot_Fund_Capture(Stats_All, BM_Name = "Capped SWIX", Fund_Name = "SafeCore", # 
                   Caption = "Note:\nMonthly returns. Capture ratios use the arithmetic calculation. Modified CVaR shown as a positive loss. Calculation own.") # the note under the plot
 ```
 
-SafeCore has delivered a better return than its benchmark, but it has not done so by managing volatility. Over the full sample the fund returned 11.1 percent a year against 8.6 percent, with an information ratio of `r Fact_Pull(Stats_Facts, "2015-2026", "Information Ratio", Key_Col = "Period")`, yet its volatility of 14.5 percent was slightly higher than the benchmark's 14.0 percent. Its beta of `r Fact_Pull(Stats_Facts, "2015-2026", "Beta", Key_Col = "Period")` shows that it moves one for one with the market, and its down capture of 0.98 means that it suffered almost the full extent of the benchmark's losses in falling months. The fund's protective features are modest. Its maximum drawdown of 27.8 percent was shallower than the benchmark's 31.2 percent, and its modified CVaR was marginally lower. The outperformance therefore came from stock selection in rising markets, with an up capture of 1.09, and not from protection in falling ones. The more recent period is less flattering still. Since 2020 the fund's down capture has risen to 1.09, so it has lost more than the benchmark in falling months, and its information ratio has fallen to `r Fact_Pull(Stats_Facts, "2020-2026", "Information Ratio", Key_Col = "Period")`.
+SafeCore has delivered a better return than its benchmark, but it has not done so by managing volatility. Over the full sample the fund returned 10.9 percent a year against 8.4 percent, with an information ratio of `r Fact_Pull(Stats_Facts, "2015-2026", "Information Ratio", Key_Col = "Period")`, yet its volatility of 14.6 percent was slightly higher than the benchmark's 14.0 percent. Its beta of `r Fact_Pull(Stats_Facts, "2015-2026", "Beta", Key_Col = "Period")` shows that it moves one for one with the market, and its down capture of 0.98 means that it suffered almost the full extent of the benchmark's losses in falling months. The fund's protective features are modest. Its maximum drawdown of 27.9 percent was shallower than the benchmark's 31.7 percent, and its modified CVaR was marginally lower. The outperformance therefore came from stock selection in rising markets, with an up capture of 1.09, and not from protection in falling ones. The more recent period is less flattering still. Since 2020 the fund's down capture has risen to 1.09, so it has lost more than the benchmark in falling months, and its information ratio has fallen to `r Fact_Pull(Stats_Facts, "2020-2026", "Information Ratio", Key_Col = "Period")`.
 
 ## Daily Tail Risk
 
@@ -433,8 +433,8 @@ Score_Dates <- sort(unique(Factor_Scores$date)) # the month ends on which the ve
 Own_Scores <- Own_Factor_Scores(Stock_Returns, Score_Dates, Mom_Months = 6, Skip_Months = 1, Vol_Months = 6, Ret_Cap = 0.25, Min_Coverage = 0.8) # own 6-1 momentum and 6 month realised volatility for every stock
 Own_Mom12 <- Own_Factor_Scores(Stock_Returns, Score_Dates, Mom_Months = 12, Skip_Months = 1, Vol_Months = 6) %>% select(date, Tickers, Mom12_Raw = Mom_Raw) # a 12-1 momentum variant, used only as a diagnostic
 Stock_Betas <- Stock_Beta_Calc(Stock_Returns, Idx_Daily %>% filter(Tickers == "J433") %>% select(date, Mkt = Returns), Score_Dates, Months = 12) # market and downside betas against the Capped SWIX, used only as a diagnostic
-Scores_All <-
-    Factor_Scores %>%
+Scores_All <- # build Scores_All through the steps below
+    Factor_Scores %>% # start from the vendor factor scores
     spread(Factor, Factor_Value) %>% # one column per vendor factor
     left_join(Own_Scores, by = c("date", "Tickers")) %>% # attach the own measures
     left_join(Own_Mom12, by = c("date", "Tickers")) %>% # attach the 12-1 momentum variant
@@ -455,7 +455,7 @@ Score_Pairs <- tibble(X = c("Momentum_Own", "Momentum12_Own", "LowVol_Own"), # t
 Score_Cor <- Score_Rank_Cor(Scores_All, Score_Pairs) # the monthly rank correlation of each pair
 Own_Names <- c(Beta = "Market beta", Downside_Beta = "Downside beta", LowVol_Own = "Own low volatility", Momentum_Own = "Own 6-1 momentum", Momentum12_Own = "Own 12-1 momentum") # readable names for the own measures
 Diag_Pairs <- tidyr::expand_grid(Y = c("Earnings Quality", "Growth", "Momentum", "Value", "Volatility Sensitivity"), X = names(Own_Names)) %>% mutate(Label = paste(X, Y, sep = " | ")) # every own measure against every vendor factor, with a label that can be split again
-Score_Diag <-
+Score_Diag <- # build Score_Diag through the steps below
     Score_Rank_Cor(Scores_All, Diag_Pairs) %>% # the monthly rank correlation of every combination
     group_by(Label) %>% # one number per combination
     summarise(Rho = mean(Rho)) %>% # the average over all months
@@ -474,16 +474,16 @@ The vendor's volatility score is more problematic. It has an average rank correl
 ## Composite Factor Scores Across Strategies
 
 ```{r q1b_composite, fig.width = 11, fig.height = 7, fig.cap = "Composite Factor Scores by Strategy"}
-Strategy_Holdings <-
-    Local_Index_Constituents %>%
+Strategy_Holdings <- # build Strategy_Holdings through the steps below
+    Local_Index_Constituents %>% # start from the local index constituents
     mutate(YM = format(date, "%Y%m")) %>% # a year and month label
     group_by(Index, YM) %>% # one set of holdings per index per month
     filter(date == max(date)) %>% # keep the last trading day of each month
     ungroup() %>% # remove the grouping again
     select(date, Portfolio = Index, Tickers, Weight = weight) # the shape that the composite score function expects
 All_Holdings <- bind_rows(Strategy_Holdings, SafeCore %>% filter(date >= lubridate::ymd(20200101)) %>% select(date, Portfolio = Fund, Tickers, Weight)) # the strategy indexes and SafeCore together
-Scores_Long <-
-    Scores_All %>%
+Scores_Long <- # build Scores_Long through the steps below
+    Scores_All %>% # start from Scores_All
     select(date, Tickers, `Earnings Quality`, Growth, Value, `Vendor Momentum` = Momentum, `Vendor Volatility Sensitivity` = `Volatility Sensitivity`, # the vendor factors
            `Own Momentum (6-1)` = Momentum_Own, `Own Low Volatility` = LowVol_Own) %>% # and the own scores
     gather(Factor, Score, -date, -Tickers) # long format, one row per stock, factor and month
@@ -502,8 +502,8 @@ Figure \ref{fig:q1b_composite} shows holdings-weighted composite scores. The own
 
 ```{r q1b_active, fig.width = 10, fig.height = 8, fig.cap = "SafeCore Active Factor Exposures Against the Capped SWIX"}
 Active_Factors <- c("Own Low Volatility", "Vendor Volatility Sensitivity", "Own Momentum (6-1)", "Vendor Momentum", "Earnings Quality", "Value") # the factors most relevant to the volatility question, leaving out growth, which sits close to zero throughout
-Active_Period <-
-    Port_Factor_Scores %>%
+Active_Period <- # build Active_Period through the steps below
+    Port_Factor_Scores %>% # start from Port_Factor_Scores
     filter(Portfolio %in% c("SafeCore", "Capped SWIX"), Factor %in% Active_Factors, date >= lubridate::ymd(20200801)) %>% # the fund and benchmark scores for the chosen factors
     select(date, Portfolio, Factor, Score) %>% # keep only what the summary needs
     spread(Portfolio, Score) %>% # one column for the fund and one for the benchmark
@@ -600,10 +600,10 @@ A wider opportunity set should allow skilled managers to separate from the rest.
 
 ```{r q1c_managers, fig.cap = "Market Dispersion and the Spread of Active Manager Results"}
 Active_Managers <- read_rds("../../data/Active_Managers.rds") # monthly returns of the active manager universe
-BM_Monthly <- Idx_Daily %>% filter(Tickers == "J433") %>% mutate(YM = format(date, "%Y%m")) %>% group_by(YM) %>% summarise(BM = prod(1 + Returns) - 1) # monthly Capped SWIX returns, keyed by year and month
-Hit_Rate <- Manager_Hit_Rate(Active_Managers, BM_Monthly, NSel = 12) # share of managers beating the benchmark and the spread of their excess returns over rolling 12 months
-Opportunity <-
-    Dispersion %>%
+Q1_BM_Monthly <- Idx_Daily %>% filter(Tickers == "J433") %>% mutate(YM = format(date, "%Y%m")) %>% group_by(YM) %>% summarise(BM = prod(1 + Returns) - 1) # monthly Capped SWIX returns, keyed by year and month
+Hit_Rate <- Manager_Hit_Rate(Active_Managers, Q1_BM_Monthly, NSel = 12) # share of managers beating the benchmark and the spread of their excess returns over rolling 12 months
+Opportunity <- # build Opportunity through the steps below
+    Dispersion %>% # start from Dispersion
     mutate(YM = format(date, "%Y%m")) %>% # a year and month label
     group_by(YM) %>% filter(date == max(date)) %>% ungroup() %>% # the dispersion reading at each month end, which covers that month
     arrange(date) %>% # order by date before rolling
@@ -638,8 +638,8 @@ Macro_Gauges <- bind_rows(Implied_Vol, Uncertainty_Indexes, Local_Cncy_Vol_Index
 Commod_Rets <- Commods %>% TRI_Returns_Calc(Start_Date = lubridate::ymd(20200101)) # daily commodity returns, from which monthly oil and gold volatility are measured
 Macro_Names <- c(VIX = "US implied vol (VIX)", MOVE_Index = "Bond vol (MOVE)", EPUCGLCP = "Global policy uncertainty", Oil_Brent_Vol = "Brent oil vol", Gold_Vol = "Gold vol", SAVIUSD = "Rand vol (SAVIUSD)") # readable names for the macro variables
 Macro_Monthly <- State_Monthly_Calc(Level_df = Macro_Gauges, Level_Sel = c("VIX", "MOVE_Index", "EPUCGLCP", "SAVIUSD"), Vol_df = Commod_Rets, Vol_Sel = c("Oil_Brent", "Gold")) %>% mutate(State = recode(State, !!!Macro_Names)) %>% spread(State, Value) # one row per month with every macro variable as a column
-Macro_Panel <-
-    Dispersion %>%
+Macro_Panel <- # build Macro_Panel through the steps below
+    Dispersion %>% # start from Dispersion
     mutate(YM = format(date, "%Y%B")) %>% # the same year and month label that State_Monthly_Calc uses
     group_by(YM) %>% filter(date == max(date)) %>% ungroup() %>% # the dispersion reading at each month end
     left_join(Corr %>% mutate(YM = format(date, "%Y%B")) %>% select(YM, Implied_Corr), by = "YM") %>% # attach the implied correlation of the same month

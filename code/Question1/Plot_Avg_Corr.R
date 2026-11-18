@@ -1,5 +1,5 @@
 # Plots the average pairwise and cap-weighted implied correlation of the largest constituents, with the gap between them shaded and the peak labelled.
-Plot_Avg_Corr <- function(df, Highlight_From = lubridate::ymd(20260101), Title = "Inter-Constituent Correlation", Subtitle = "", Caption = "Note:\nCalculation own"){
+Plot_Avg_Corr <- function(df, Highlight_From = lubridate::ymd(20260101), Title = "Inter-Constituent Correlation", Subtitle = "", Caption = "Note:\nCalculation own"){ # define Plot_Avg_Corr, with inputs df and Highlight_From, plus the title, subtitle and caption text
 
     if( !all(c("date", "Avg_Corr", "Implied_Corr") %in% names(df)) ) stop("... for Plot_Avg_Corr to work, first run Avg_Corr_Calc") # stop early if the correlation series is missing
 
@@ -8,8 +8,8 @@ Plot_Avg_Corr <- function(df, Highlight_From = lubridate::ymd(20260101), Title =
     Gap <- 0.06 # the smallest vertical gap between the two end labels, so that they never overlap
     Lab_Y <- if (Ends$Implied_Corr >= Ends$Avg_Corr) c(max(Ends$Implied_Corr, Ends$Avg_Corr + Gap), Ends$Avg_Corr) else c(Ends$Implied_Corr, max(Ends$Avg_Corr, Ends$Implied_Corr + Gap)) # the label heights, pushed apart when the lines end close together
 
-    g <-
-        df %>%
+    g <- # build the plot in layers and store it as g
+        df %>% # start from the input data
         ggplot() + # start the plot
         annotate("rect", xmin = Highlight_From, xmax = max(df$date), ymin = -Inf, ymax = Inf, fill = "steelblue", alpha = 0.12) + # shade the recent period that the question is about
         geom_ribbon(aes(date, ymin = pmin(Avg_Corr, Implied_Corr), ymax = Implied_Corr), fill = "firebrick", alpha = 0.25) + # red where the large stocks move together more than the average pair
@@ -25,6 +25,6 @@ Plot_Avg_Corr <- function(df, Highlight_From = lubridate::ymd(20260101), Title =
         fmxdat::theme_fmx(title.size = fmxdat::ggpts(30), subtitle.size = fmxdat::ggpts(26), caption.size = fmxdat::ggpts(22), CustomCaption = T) + # the clean course theme with readable text sizes
         labs(x = "", y = "Correlation of daily returns", title = Title, subtitle = Subtitle, caption = Caption) # axis names, title and note
 
-    g
+    g # return the finished plot
 
 }

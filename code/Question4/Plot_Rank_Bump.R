@@ -1,5 +1,5 @@
 # Plots each portfolio rule's rank by calendar year return as a bump chart, with smooth curves between years and each year's return printed on its point.
-Plot_Rank_Bump <- function(Rets, Pal, Title = "Calendar Year Rankings", Subtitle = "", Caption = "Note:\nCalculation own"){
+Plot_Rank_Bump <- function(Rets, Pal, Title = "Calendar Year Rankings", Subtitle = "", Caption = "Note:\nCalculation own"){ # define Plot_Rank_Bump, with inputs Rets and Pal, plus the title, subtitle and caption text
 
     Yr <- Rets %>% mutate(Year = lubridate::year(date)) %>% group_by(Year, Strategy) %>% summarise(Ret = prod(1 + Returns) - 1, Months = n(), .groups = "drop") %>% group_by(Year) %>% mutate(Rank = rank(-Ret, ties.method = "first")) %>% ungroup() # each rule's return and rank in every calendar year
 

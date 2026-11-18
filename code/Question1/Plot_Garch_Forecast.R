@@ -1,5 +1,5 @@
 # Plots each series' recent GARCH volatility and its forecast path towards the long run level, so that it is clear whether elevated volatility is expected to persist.
-Plot_Garch_Forecast <- function(Fc_df, Cols, Title = "GARCH Volatility Forecasts", Subtitle = "", Caption = "Note:\nCalculation own"){
+Plot_Garch_Forecast <- function(Fc_df, Cols, Title = "GARCH Volatility Forecasts", Subtitle = "", Caption = "Note:\nCalculation own"){ # define Plot_Garch_Forecast, with inputs Fc_df and Cols, plus the title, subtitle and caption text
 
     Start_Fc <- Fc_df %>% filter(Part == "Forecast") %>% pull(date) %>% min() # the first forecast day
     Lab <- Fc_df %>% group_by(Name) %>% summarise(Long_Run = dplyr::first(Long_Run), Half_Life = dplyr::first(Half_Life), Model = dplyr::first(Model), .groups = "drop") # the long run level and half life of each series

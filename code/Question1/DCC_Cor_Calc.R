@@ -1,5 +1,5 @@
 # Fits a DCC-GARCH model and returns the time-varying correlation between a base series and every other series.
-DCC_Cor_Calc <- function(df, Base = "Capped SWIX"){
+DCC_Cor_Calc <- function(df, Base = "Capped SWIX"){ # define DCC_Cor_Calc, with inputs df and Base
 
     if( !Base %in% unique(df$Name) ) stop(glue::glue("... {Base} is not a Name in the data frame provided")) # stop early if the base series does not exist
 

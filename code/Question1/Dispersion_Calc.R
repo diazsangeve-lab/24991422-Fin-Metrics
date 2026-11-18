@@ -1,5 +1,5 @@
 # Calculates rolling cross-sectional return dispersion of index constituents, weighted and unweighted, following the dispersion practical.
-Dispersion_Calc <- function(Constituents, NSel = 21, Ret_Cap = 0.5, Max_Gap_Days = NULL){
+Dispersion_Calc <- function(Constituents, NSel = 21, Ret_Cap = 0.5, Max_Gap_Days = NULL){ # define Dispersion_Calc, with inputs Constituents, NSel, Ret_Cap and Max_Gap_Days
 
     # For stepping through uncomment:
     # Constituents <- Local_Index_Constituents %>% filter(Index == "Capped SWIX") ; NSel <- 21 ; Ret_Cap <- 0.5
@@ -8,8 +8,8 @@ Dispersion_Calc <- function(Constituents, NSel = 21, Ret_Cap = 0.5, Max_Gap_Days
 
     if( is.null(Max_Gap_Days) ) Max_Gap_Days <- ceiling(NSel * 1.6) # the longest calendar span a window of NSel trading days may cover before it is treated as broken
 
-    Rolled <-
-        Constituents %>%
+    Rolled <- # build Rolled through the steps below
+        Constituents %>% # start from the index constituents
         arrange(date) %>% # order by date, as lags and rolling windows are used
         mutate(Return = pmax(pmin(Return, Ret_Cap), -Ret_Cap)) %>% # winsorise extreme daily returns, which are mostly data errors
         group_by(Tickers) %>% # roll within each stock
@@ -20,13 +20,13 @@ Dispersion_Calc <- function(Constituents, NSel = 21, Ret_Cap = 0.5, Max_Gap_Days
         ungroup() %>% # remove the grouping again
         filter(!is.na(Roll_Ret), !is.na(Roll_W), Span <= Max_Gap_Days) # keep only complete, unbroken windows, so that a stock that left and rejoined the index is not compounded across the gap
 
-    Rolled %>%
+    Rolled %>% # start from Rolled, built above
         group_by(date) %>% # one dispersion number per day
         mutate(Roll_W = Roll_W / sum(Roll_W)) %>% # rescale the weights over the stocks with a complete window
         summarise(N = n(), # the number of stocks in the calculation
                   Index_Ret = sum(Roll_W * Roll_Ret), # the weighted average return, which is the benchmark return over the window
                   Dispersion_W = sqrt(sum(Roll_W * (Roll_Ret - Index_Ret)^2)), # weighted cross-sectional volatility around the benchmark return
                   Dispersion_U = sd(Roll_Ret), # equally weighted cross-sectional volatility
-                  .groups = "drop")
+                  .groups = "drop") # drop the grouping once the summary is done
 
 }

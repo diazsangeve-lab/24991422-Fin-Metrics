@@ -1,5 +1,5 @@
 # Builds one tidy data frame of monthly returns for every asset in the universe, from sources quoted as index levels, daily returns or monthly returns, using a meta table that names each asset and its source.
-Asset_Returns_Build <- function(Meta, MSCI, Commods, Bond_Rets, Idx_Daily, LCL){
+Asset_Returns_Build <- function(Meta, MSCI, Commods, Bond_Rets, Idx_Daily, LCL){ # define Asset_Returns_Build, with inputs Meta, MSCI, Commods, Bond_Rets, Idx_Daily and LCL
 
     if( !all(c("Asset", "Source", "Source_Name") %in% names(Meta)) ) stop("... Meta must have columns called 'Asset', 'Source' and 'Source_Name'") # stop early if the meta table is not in the expected shape
 
@@ -9,7 +9,7 @@ Asset_Returns_Build <- function(Meta, MSCI, Commods, Bond_Rets, Idx_Daily, LCL){
 
     From_Daily <- function(df) df %>% mutate(YM = format(date, "%Y%m")) %>% group_by(Name) %>% filter(YM > YM[which.min(date)] | lubridate::day(min(date)) <= 5) %>% group_by(Name, YM) %>% summarise(date = Month_End(max(date)), Returns = prod(1 + Returns) - 1, .groups = "drop") %>% select(date, Name, Returns) # daily returns compounded into months, dropping a first month that starts late
 
-    bind_rows(
+    bind_rows( # stack the monthly returns of every source into one tidy table
         From_Levels(MSCI) %>% mutate(Source = "MSCI"), # global equity indexes in dollars
         From_Levels(Commods) %>% mutate(Source = "Commods"), # commodity indexes in dollars
         Bond_Rets %>% select(date, Name, Returns) %>% mutate(Source = "Bonds"), # the constructed global bond indexes

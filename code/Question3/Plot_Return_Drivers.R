@@ -1,5 +1,5 @@
 # Plots the split of every fund's return variance into market, peer group and fund-specific parts as a sorted barcode of stacked bars, with the client fund marked.
-Plot_Return_Drivers <- function(Drv, Fund_Label = "ABC Fund", Title = "What Drives Each Fund's Returns", Subtitle = "", Caption = "Note:\nCalculation own"){
+Plot_Return_Drivers <- function(Drv, Fund_Label = "ABC Fund", Title = "What Drives Each Fund's Returns", Subtitle = "", Caption = "Note:\nCalculation own"){ # define Plot_Return_Drivers, with inputs Drv and Fund_Label, plus the title, subtitle and caption text
 
     Part_Cols <- c("Moves with the market" = "steelblue", "Moves with other managers" = "#9ECAE9", "Unique to the fund" = "darkorange") # one colour per part
 
@@ -7,13 +7,13 @@ Plot_Return_Drivers <- function(Drv, Fund_Label = "ABC Fund", Title = "What Driv
     Fund <- Ordered %>% filter(Group == Fund_Label) # the client fund's position
     Med <- Drv %>% filter(Group == "Peer") %>% summarise(across(c(Market, Shared, Unique), median)) # the typical peer's split
 
-    D <-
-        Ordered %>%
+    D <- # build D through the steps below
+        Ordered %>% # start from Ordered, built above
         select(Rank, Group, `Moves with the market` = Market, `Moves with other managers` = Shared, `Unique to the fund` = Unique) %>% # readable names for the three parts
         gather(Part, Share, -Rank, -Group) %>% # long format, one row per fund and part
         mutate(Part = factor(Part, levels = rev(names(Part_Cols)))) # market at the bottom of each bar
 
-    g <-
+    g <- # build the plot in layers and store it as g
         ggplot(D) + # start the plot
         geom_col(aes(Rank, Share, fill = Part, alpha = Group == Fund_Label), width = 1) + # one stacked bar per fund
         scale_alpha_manual(values = c(`TRUE` = 1, `FALSE` = 0.55), guide = "none") + # the client fund at full strength and the peers faded
@@ -27,6 +27,6 @@ Plot_Return_Drivers <- function(Drv, Fund_Label = "ABC Fund", Title = "What Driv
         theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), legend.position = "bottom") + # no fund numbers along the bottom
         labs(x = glue::glue("{nrow(Drv)} funds with at least five years of returns, sorted from most to least market driven"), y = "Share of return variance", title = Title, subtitle = Subtitle, caption = Caption, fill = "") # axis names, title and note
 
-    g
+    g # return the finished plot
 
 }

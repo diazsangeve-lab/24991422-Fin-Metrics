@@ -1,10 +1,10 @@
 # Plots each portfolio rule's average share of capital next to its average share of risk by asset family, as paired stacked bars, so that the gap between where money sits and where risk comes from can be read directly.
-Plot_Capital_Risk_Bars <- function(W, Pal, Title = "Where the Capital Sits and Where the Risk Comes From", Subtitle = "", Caption = "Note:\nCalculation own"){
+Plot_Capital_Risk_Bars <- function(W, Pal, Title = "Where the Capital Sits and Where the Risk Comes From", Subtitle = "", Caption = "Note:\nCalculation own"){ # define Plot_Capital_Risk_Bars, with inputs W and Pal, plus the title, subtitle and caption text
 
     Fam_Cols <- c(`Global equity` = "#4292C6", `Local equity and property` = "#E6550D", `Global bonds` = "#41AB5D", `Local bonds` = "#756BB1", Commodities = "#D4A62A") # a mid shade for each family, which reads well as a fill
 
-    D <-
-        W %>%
+    D <- # build D through the steps below
+        W %>% # start from W
         mutate(Family = Pal$Asset_Family[Asset]) %>% # each asset's family
         group_by(Strategy, date, Family) %>% # one value per family per rule and date
         summarise(Capital = sum(Weight), Risk = sum(pmax(Risk_Share, 0)), .groups = "drop") %>% # the family's capital and risk shares

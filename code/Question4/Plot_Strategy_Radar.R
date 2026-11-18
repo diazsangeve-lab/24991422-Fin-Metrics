@@ -1,19 +1,19 @@
 # Plots each portfolio rule's standing on several measures as a radar chart, scaling every measure so that the outer edge is the best of the four rules.
-Plot_Strategy_Radar <- function(Stats, Pal, Title = "Strategy Scorecard", Subtitle = "", Caption = "Note:\nCalculation own"){
+Plot_Strategy_Radar <- function(Stats, Pal, Title = "Strategy Scorecard", Subtitle = "", Caption = "Note:\nCalculation own"){ # define Plot_Strategy_Radar, with inputs Stats and Pal, plus the title, subtitle and caption text
 
     Measures <- tibble(Col = c("Ret", "Ratio", "Vol", "MaxDD", "CVaR", "Turnover", "Eff_Risk"), # the measures compared
                        Label = c("Return", "Return per unit\nof volatility", "Low volatility", "Shallow\ndrawdown", "Small tail\nlosses", "Low turnover", "Diversified\nrisk"), # readable names
                        Higher_Better = c(TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, TRUE)) # whether a higher value is better
 
     K <- nrow(Measures) # the number of spokes
-    Scores <-
-        Measures %>%
+    Scores <- # build Scores through the steps below
+        Measures %>% # start from Measures, built above
         mutate(Angle = pi / 2 - 2 * pi * (row_number() - 1) / K) %>% # the angle of each spoke, starting at the top
         tidyr::crossing(Strategy = Stats$Strategy) %>% # one row per rule and measure
         mutate(Value = map2_dbl(Col, Strategy, ~Stats[[.x]][Stats$Strategy == .y])) %>% # the rule's value on the measure
         group_by(Col) %>% # scale within each measure
         mutate(Score = ifelse(Higher_Better, (Value - min(Value)) / (max(Value) - min(Value)), (max(Value) - Value) / (max(Value) - min(Value))), Score = 0.2 + 0.8 * Score) %>% # zero to one with the best rule at one, kept off the centre so that every shape is visible
-        ungroup() %>%
+        ungroup() %>% # remove the grouping again
         mutate(x = Score * cos(Angle), y = Score * sin(Angle), Strategy = factor(Strategy, levels = names(Pal$Strategy))) %>% # the point on each spoke
         arrange(Strategy, desc(Angle)) # order the points around each polygon
 

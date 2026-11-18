@@ -1,5 +1,5 @@
 # Plots the client fund's rolling returns inside the peer group's percentile bands, with a strip below showing the quartile it finished in each calendar year.
-Plot_Peer_Fan <- function(Pct, Cal, Fund_Label = "ABC Fund", Title = "ABC Fund Against the Peer Group Over Time", Subtitle = "", Caption = "Note:\nCalculation own"){
+Plot_Peer_Fan <- function(Pct, Cal, Fund_Label = "ABC Fund", Title = "ABC Fund Against the Peer Group Over Time", Subtitle = "", Caption = "Note:\nCalculation own"){ # define Plot_Peer_Fan, with inputs Pct, Cal and Fund_Label, plus the title, subtitle and caption text
 
     D <- Pct %>% filter(!is.na(Fund_Ret)) # the months in which the fund has a full window
     Lims <- c(lubridate::floor_date(min(D$date), "year"), max(D$date) + 420) # the date range shared by both panels, with room on the right for labels
@@ -7,7 +7,7 @@ Plot_Peer_Fan <- function(Pct, Cal, Fund_Label = "ABC Fund", Title = "ABC Fund A
     Breaks <- seq(Lims[1], max(D$date), by = "1 year") # yearly labels that stop at the last month
     Quart_Cols <- c("Top quartile" = "darkorange", "Second quartile" = "#F6C38B", "Third quartile" = "grey80", "Bottom quartile" = "grey60") # one colour per quartile
 
-    g1 <-
+    g1 <- # build this panel of the figure in layers and store it as g1
         ggplot(D) + # start the top panel
         geom_ribbon(aes(date, ymin = P05, ymax = P95), fill = "steelblue", alpha = 0.15) + # the middle 90 percent of peers
         geom_ribbon(aes(date, ymin = P25, ymax = P75), fill = "steelblue", alpha = 0.3) + # the middle half of peers
@@ -22,8 +22,8 @@ Plot_Peer_Fan <- function(Pct, Cal, Fund_Label = "ABC Fund", Title = "ABC Fund A
         theme(axis.text.x = element_blank()) + # the strip below carries the years
         labs(x = "", y = "Rolling 3 year return (ann.)", title = Title, subtitle = Subtitle) # axis names and title
 
-    g2 <-
-        Cal %>%
+    g2 <- # build this panel of the figure in layers and store it as g2
+        Cal %>% # start from the calendar year ranks
         mutate(Mid = as.Date(paste0(Year, "-07-01")), # the middle of each year, to line up with the top panel
                Lab = paste0(round(Pct * 100), ifelse(YTD, "*", ""))) %>% # the share of peers beaten, with a star for the incomplete year
         filter(Mid >= Lims[1]) %>% # only years inside the top panel's range

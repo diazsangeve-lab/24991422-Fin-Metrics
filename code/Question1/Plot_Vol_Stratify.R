@@ -1,10 +1,10 @@
 # Plots how volatile one index is in the calm and stressed months of each state variable as a dumbbell chart, with the gap between the two in a side column.
-Plot_Vol_Stratify <- function(df, Index_Sel = "Capped SWIX", Title = "Volatility by Global Regime", Subtitle = "", Caption = "Note:\nCalculation own"){
+Plot_Vol_Stratify <- function(df, Index_Sel = "Capped SWIX", Title = "Volatility by Global Regime", Subtitle = "", Caption = "Note:\nCalculation own"){ # define Plot_Vol_Stratify, with inputs df and Index_Sel, plus the title, subtitle and caption text
 
     if( !Index_Sel %in% unique(df$Name) ) stop(glue::glue("... {Index_Sel} is not in the stratification results provided")) # stop early if the chosen index was not stratified
 
-    D <-
-        df %>%
+    D <- # build D through the steps below
+        df %>% # start from the input data
         filter(Name == Index_Sel) %>% # keep only the chosen index
         select(State, Regime, Ratio) %>% # keep only what the plot needs
         spread(Regime, Ratio) %>% # one column for calm months and one for stressed months
@@ -13,8 +13,8 @@ Plot_Vol_Stratify <- function(df, Index_Sel = "Capped SWIX", Title = "Volatility
     Gap_X <- max(D$High) + 0.3 # where the gap column sits, to the right of the dumbbells and their labels
     Top <- levels(D$State)[length(levels(D$State))] # the top row, where the direct legend goes
 
-    g <-
-        D %>%
+    g <- # build the plot in layers and store it as g
+        D %>% # start from D, built above
         ggplot() + # start the plot
         annotate("rect", xmin = Gap_X - 0.1, xmax = Gap_X + 0.1, ymin = -Inf, ymax = Inf, fill = "grey93") + # a shaded strip for the gap column
         geom_vline(xintercept = 1, linetype = "dashed", color = "grey40") + # one marks normal, full sample volatility

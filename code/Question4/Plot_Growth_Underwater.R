@@ -1,12 +1,12 @@
 # Plots the growth of one unit invested in each portfolio rule with the rule's name written along its line, above an underwater chart of drawdowns from the previous peak.
-Plot_Growth_Underwater <- function(Rets, Pal, Title = "Growth and Drawdowns of the Four Portfolios", Subtitle = "", Caption = "Note:\nCalculation own"){
+Plot_Growth_Underwater <- function(Rets, Pal, Title = "Growth and Drawdowns of the Four Portfolios", Subtitle = "", Caption = "Note:\nCalculation own"){ # define Plot_Growth_Underwater, with inputs Rets and Pal, plus the title, subtitle and caption text
 
     D <- Rets %>% arrange(date) %>% group_by(Strategy) %>% mutate(Growth = cumprod(1 + Returns), Drawdown = Growth / cummax(pmax(Growth, 1)) - 1) %>% ungroup() %>% mutate(Strategy = factor(Strategy, levels = names(Pal$Strategy))) # wealth and drawdown paths, counting the starting value as the first peak
     Start <- D %>% group_by(Strategy) %>% slice(1) %>% mutate(date = date - months(1), Growth = 1, Drawdown = 0) %>% ungroup() # a starting point of one at the first rebalance
     D <- bind_rows(Start, D) %>% arrange(Strategy, date) # every path begins at one
 
-    g1 <-
-        D %>%
+    g1 <- # build this panel of the figure in layers and store it as g1
+        D %>% # start from D, built above
         ggplot(aes(date, Growth, color = Strategy)) + # dates along the bottom and wealth up the side
         geom_hline(yintercept = 1, color = "grey50", linetype = "dashed") + # the starting value
         geom_line(linewidth = 1.1) + # each rule's path
@@ -17,8 +17,8 @@ Plot_Growth_Underwater <- function(Rets, Pal, Title = "Growth and Drawdowns of t
         theme(axis.text.x = element_blank()) + # the panel below carries the dates
         labs(x = "", y = "Growth of one unit") # axis names
 
-    g2 <-
-        D %>%
+    g2 <- # build this panel of the figure in layers and store it as g2
+        D %>% # start from D, built above
         ggplot(aes(date, Drawdown, color = Strategy, fill = Strategy)) + # dates along the bottom and drawdown up the side
         geom_area(position = "identity", alpha = 0.12, linewidth = 0.6) + # the drawdown of each rule, overlaid
         scale_color_manual(values = Pal$Strategy, guide = "none") + # the rule colours

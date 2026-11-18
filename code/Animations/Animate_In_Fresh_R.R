@@ -1,5 +1,5 @@
 # Runs one of the animation functions in a fresh R session, since gganimate stalls when it renders inside a knitting document, and returns the path of the saved gif.
-Animate_In_Fresh_R <- function(Fn, Args, Code_Dir = "code/"){
+Animate_In_Fresh_R <- function(Fn, Args, Code_Dir = "code/"){ # define Animate_In_Fresh_R, with inputs Fn, Args and Code_Dir
 
     callr::r(function(Fn, Args, Code_Dir){ # the work done in the separate session
         suppressMessages(library(tidyverse)) # the pipe and dplyr verbs the functions use

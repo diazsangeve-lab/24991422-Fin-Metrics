@@ -1,13 +1,13 @@
 # Builds a table of return, risk and relative performance statistics for one or more funds against a benchmark, using monthly returns.
-Fund_Stats_Table <- function(df, BM_Name = "Capped SWIX", Rf_df = NULL){
+Fund_Stats_Table <- function(df, BM_Name = "Capped SWIX", Rf_df = NULL){ # define Fund_Stats_Table, with inputs df, BM_Name and Rf_df
 
     # For stepping through uncomment:
     # df <- Port_Daily ; BM_Name <- "Capped SWIX" ; Rf_df <- STeFI
 
     if( !BM_Name %in% unique(df$Name) ) stop(glue::glue("... {BM_Name} is not a Name in the data frame provided")) # stop early if the benchmark is missing
 
-    Monthly <-
-        df %>%
+    Monthly <- # build Monthly through the steps below
+        df %>% # start from the input data
         mutate(YM = format(date, "%Y%m")) %>% # a year and month label
         group_by(Name, YM) %>% # one number per series per month
         summarise(date = max(date), Returns = prod(1 + Returns) - 1, .groups = "drop") # chain the daily returns into a monthly return
@@ -19,7 +19,7 @@ Fund_Stats_Table <- function(df, BM_Name = "Capped SWIX", Rf_df = NULL){
     Rf <- 0 # default risk free rate if no cash index is given
     if( !is.null(Rf_df) ) Rf <- Rf_df %>% mutate(YM = format(date, "%Y%m")) %>% group_by(YM) %>% summarise(date = max(date), Rf = prod(1 + Returns) - 1, .groups = "drop") %>% filter(YM %in% Monthly$YM) %>% tbl2xts::tbl_xts(cols_to_xts = Rf) # monthly cash returns, used for the Sharpe ratio
 
-    Stats_One <- function(x, name){
+    Stats_One <- function(x, name){ # define Stats_One, with inputs x and name
         Rf_use <- if(is.numeric(Rf)) 0 else Rf[zoo::index(x)] # align the cash returns to the fund's months
         tibble(Name = name, # the series name
                `Return (Ann.)` = as.numeric(PerformanceAnalytics::Return.annualized(x, scale = 12)), # geometric annualised return

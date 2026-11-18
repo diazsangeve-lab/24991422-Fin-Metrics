@@ -1,13 +1,13 @@
 # Plots the client fund's standing against its peers on several measures as bullet bars, each showing the share of peers the fund beats, with the fund's value and the peer median printed beside it.
-Plot_Peer_Scorecard <- function(Stats, Fund_Label = "ABC Fund", Title = "ABC Fund Against Its Peers, 2015 to 2025", Subtitle = "", Caption = "Note:\nCalculation own"){
+Plot_Peer_Scorecard <- function(Stats, Fund_Label = "ABC Fund", Title = "ABC Fund Against Its Peers, 2015 to 2025", Subtitle = "", Caption = "Note:\nCalculation own"){ # define Plot_Peer_Scorecard, with inputs Stats and Fund_Label, plus the title, subtitle and caption text
 
     Metrics <- tibble(Col = c("Ret", "Excess", "IR", "Vol", "MaxDD", "Beta"), # the measures shown
                       Label = c("Annualised return", "Return above the benchmark", "Information ratio", "Volatility", "Maximum drawdown", "Market beta"), # readable names
                       Higher_Better = c(TRUE, TRUE, TRUE, FALSE, FALSE, FALSE), # whether a higher value is better for the client
                       Fmt = c("pct", "pct", "num", "pct", "pct", "num")) # how each value is printed
 
-    D <-
-        Metrics %>%
+    D <- # build D through the steps below
+        Metrics %>% # start from Metrics, built above
         mutate(Fund = map_dbl(Col, ~Stats[[.x]][Stats$Group == Fund_Label]), # the fund's value on each measure
                Peer_Median = map_dbl(Col, ~median(Stats[[.x]][Stats$Group == "Peer"])), # the typical peer's value
                Beat = pmap_dbl(list(Col, Fund, Higher_Better), function(c, f, h) mean(if(h) Stats[[c]][Stats$Group == "Peer"] < f else Stats[[c]][Stats$Group == "Peer"] > f)), # the share of peers the fund beats, allowing for whether higher or lower is better
@@ -16,7 +16,7 @@ Plot_Peer_Scorecard <- function(Stats, Fund_Label = "ABC Fund", Title = "ABC Fun
 
     Bands <- tibble(xmin = c(0, 0.25, 0.5, 0.75), xmax = c(0.25, 0.5, 0.75, 1), Shade = c("grey94", "grey89", "grey84", "grey78")) # quartile bands behind each bar
 
-    g <-
+    g <- # build the plot in layers and store it as g
         ggplot(D) + # start the plot
         geom_rect(data = tidyr::crossing(Bands, Label = D$Label), aes(xmin = xmin, xmax = xmax, ymin = as.numeric(Label) - 0.32, ymax = as.numeric(Label) + 0.32, fill = Shade)) + # the quartile bands for every measure
         scale_fill_identity() + # use the band colours as given
@@ -31,6 +31,6 @@ Plot_Peer_Scorecard <- function(Stats, Fund_Label = "ABC Fund", Title = "ABC Fun
         Slide_Theme() + # the slide theme
         labs(x = "Share of peers ABC Fund beats", y = "", title = Title, subtitle = Subtitle, caption = Caption) # axis names, title and note
 
-    g
+    g # return the finished plot
 
 }

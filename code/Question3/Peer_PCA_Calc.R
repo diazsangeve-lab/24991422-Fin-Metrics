@@ -1,5 +1,5 @@
 # Runs a principal component analysis on the monthly returns of the funds with a complete history, and returns each fund's loading on the first two components and the variance they explain, following Practical 4.
-Peer_PCA_Calc <- function(df){
+Peer_PCA_Calc <- function(df){ # define Peer_PCA_Calc, with input df
 
     Wide <- df %>% filter(!is.na(BM)) %>% group_by(Name) %>% filter(n() == n_distinct(df$YM[!is.na(df$BM)])) %>% ungroup() %>% select(YM, Name, Returns) %>% spread(Name, Returns) # funds with a return in every month, one column per fund
     Pca <- prcomp(Wide %>% select(-YM), scale. = TRUE) # principal components of the standardised returns

@@ -1,5 +1,5 @@
 # Pulls a single value from a summary table and formats it for use as inline R code in the README prose, so that every number in the text is computed rather than typed.
-Fact_Pull <- function(df, Key, Col, Key_Col = "Name", Pct = NULL, Digits = 2, Ordinal = FALSE){
+Fact_Pull <- function(df, Key, Col, Key_Col = "Name", Pct = NULL, Digits = 2, Ordinal = FALSE){ # define Fact_Pull, with inputs df, Key, Col, Key_Col, Pct, Digits and Ordinal
 
     # For stepping through uncomment:
     # df <- Garch_Facts ; Key <- "Capped SWIX" ; Col <- "Avg_2026" ; Key_Col <- "Name" ; Pct <- 0.1

@@ -1,5 +1,5 @@
 # Plots the autocorrelation of returns next to that of squared returns for each series, with the 95 percent band, so that volatility clustering shows up as bars that stay outside the band.
-Plot_Acf_Clustering <- function(Acf_df, Title = "Volatility Clustering", Subtitle = "", Caption = "Note:\nCalculation own"){
+Plot_Acf_Clustering <- function(Acf_df, Title = "Volatility Clustering", Subtitle = "", Caption = "Note:\nCalculation own"){ # define Plot_Acf_Clustering, with input Acf_df, plus the title, subtitle and caption text
 
     Lab <- Acf_df %>% distinct(Name, Type, LB_Stat, LB_p) %>% mutate(Text = glue::glue("Ljung-Box Q(10) = {round(LB_Stat)}{ifelse(LB_p < 0.001, ', p < 0.001', paste0(', p = ', sprintf('%.3f', LB_p)))}")) # the test result for each panel
 

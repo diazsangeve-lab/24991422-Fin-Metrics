@@ -1,5 +1,5 @@
 # Runs a principal component analysis on the daily returns of the largest index constituents over a trailing window on chosen dates, and records the share of variance explained by the leading components, following Practical 4.
-Rolling_PCA_Calc <- function(Constituents, Dates, Lookback = 126, Top_N = 40, Ret_Cap = 0.5, Min_Coverage = 0.9){
+Rolling_PCA_Calc <- function(Constituents, Dates, Lookback = 126, Top_N = 40, Ret_Cap = 0.5, Min_Coverage = 0.9){ # define Rolling_PCA_Calc, with inputs Constituents, Dates, Lookback, Top_N, Ret_Cap and Min_Coverage
 
     Cons <- Constituents %>% mutate(Return = pmax(pmin(Return, Ret_Cap), -Ret_Cap)) # winsorise extreme daily returns
     All_Days <- sort(unique(Cons$date)) # every trading day

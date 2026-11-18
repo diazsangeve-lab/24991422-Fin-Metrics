@@ -1,13 +1,13 @@
 # Plots trailing market dispersion against the spread of active manager results as a connected scatter through time, coloured by the share of managers beating the benchmark.
-Plot_Alpha_Opportunity <- function(df, Title = "Alpha Opportunity and Active Manager Outcomes", Subtitle = "", Caption = "Note:\nCalculation own"){
+Plot_Alpha_Opportunity <- function(df, Title = "Alpha Opportunity and Active Manager Outcomes", Subtitle = "", Caption = "Note:\nCalculation own"){ # define Plot_Alpha_Opportunity, with input df, plus the title, subtitle and caption text
 
     if( !all(c("date", "Disp12", "Mgr_Spread", "Share_Outperform") %in% names(df)) ) stop("... for Plot_Alpha_Opportunity to work, provide 'date', 'Disp12', 'Mgr_Spread' and 'Share_Outperform'") # stop early if a column is missing
 
     D <- df %>% filter(!is.na(Disp12), !is.na(Mgr_Spread)) %>% arrange(date) # complete months in time order, so that the path is drawn correctly
     Ends <- bind_rows(D %>% slice_head(n = 1), D %>% slice_tail(n = 1)) # the first and last months, which get labels
 
-    g <-
-        D %>%
+    g <- # build the plot in layers and store it as g
+        D %>% # start from D, built above
         ggplot(aes(Disp12, Mgr_Spread)) + # market dispersion along the bottom and manager spread up the side
         geom_smooth(method = "lm", formula = y ~ x, se = TRUE, color = "grey40", fill = "grey85", linewidth = 0.6, linetype = "dashed") + # the fitted relationship with its confidence band
         geom_path(color = "grey70", linewidth = 0.4) + # connect the months in time order
@@ -20,6 +20,6 @@ Plot_Alpha_Opportunity <- function(df, Title = "Alpha Opportunity and Active Man
         theme(legend.key.width = unit(1.5, "cm")) + # a wider legend
         labs(x = "Trailing 12 month average weighted dispersion", y = "Spread of 12 month manager excess returns", title = Title, subtitle = Subtitle, caption = Caption, fill = "Share of managers\nbeating the benchmark") # axis names, title and note
 
-    g
+    g # return the finished plot
 
 }

@@ -1,8 +1,8 @@
 # Plots the client fund's rolling tracking error and information ratio inside the middle half of the peer group, so that its activeness and the reward for that activeness can be read together.
-Plot_Roll_TE_IR <- function(TI, Fund_Label = "ABC Fund", Title = "Activeness and the Reward for It", Subtitle = "", Caption = "Note:\nCalculation own"){
+Plot_Roll_TE_IR <- function(TI, Fund_Label = "ABC Fund", Title = "Activeness and the Reward for It", Subtitle = "", Caption = "Note:\nCalculation own"){ # define Plot_Roll_TE_IR, with inputs TI and Fund_Label, plus the title, subtitle and caption text
 
-    D <-
-        TI %>%
+    D <- # build D through the steps below
+        TI %>% # start from TI
         gather(Measure, Value, TE, IR) %>% # long format, one row per measure
         group_by(date, Measure) %>% # one set of bands per month and measure
         summarise(P25 = quantile(Value[Group == "Peer"], 0.25), P50 = median(Value[Group == "Peer"]), P75 = quantile(Value[Group == "Peer"], 0.75), Fund = Value[Group == Fund_Label][1], .groups = "drop") %>% # the peer quartiles and the fund

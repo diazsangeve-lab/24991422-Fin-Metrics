@@ -1,5 +1,5 @@
 # Fits a GARCH model to one series and forecasts its volatility forward, returning the recent fitted volatility, the forecast path and the long run level it converges to, following the forecasting section of Practical 6.
-Garch_Forecast_Calc <- function(df, Series, Model = "gjrGARCH", N_Ahead = 126, Show_From = lubridate::ymd(20250101), Ann = 252){
+Garch_Forecast_Calc <- function(df, Series, Model = "gjrGARCH", N_Ahead = 126, Show_From = lubridate::ymd(20250101), Ann = 252){ # define Garch_Forecast_Calc, with inputs df, Series, Model, N_Ahead, Show_From and Ann
 
     x <- df %>% filter(Name == Series, !is.na(dlogret)) %>% arrange(date) # the chosen series in date order
     xts_rtn <- xts::xts(x$dlogret, order.by = x$date) # its log returns as an xts series

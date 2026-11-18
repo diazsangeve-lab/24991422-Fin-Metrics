@@ -3,8 +3,8 @@ Plot_Bond_Construction <- function(Bond_Rets, Cols = c(US_10Yr = "#00441B", EURO
 
     D <- Bond_Rets %>% arrange(date) %>% group_by(Name) %>% mutate(Index = cumprod(1 + Returns), Lab = Labels[Name]) %>% ungroup() # the growth of one unit invested in each constructed index
 
-    g1 <-
-        D %>%
+    g1 <- # build this panel of the figure in layers and store it as g1
+        D %>% # start from D, built above
         ggplot(aes(date, Yield, color = Name, label = Lab)) + # dates along the bottom and yields up the side
         geom_line(linewidth = 0.9) + # each yield
         ggrepel::geom_text_repel(data = ~dplyr::filter(dplyr::group_by(., Name), date == max(date)), aes(label = Lab), hjust = 0, nudge_x = 400, direction = "y", fontface = "bold", size = fmxdat::ggpts(9), segment.color = NA, seed = 1) + # each name at the end of its line, pushed apart so the labels never overlap
@@ -15,8 +15,8 @@ Plot_Bond_Construction <- function(Bond_Rets, Cols = c(US_10Yr = "#00441B", EURO
         scale_x_date(breaks = seq(lubridate::ymd(20050101), max(D$date), by = "5 years"), date_labels = "%Y", expand = expansion(mult = c(0.02, 0.3))) + # labels every five years that stop at the data, with room on the right for the names
         labs(x = "", y = "Yield to maturity", title = "Ten year government bond yields") # axis names and panel title
 
-    g2 <-
-        D %>%
+    g2 <- # build this panel of the figure in layers and store it as g2
+        D %>% # start from D, built above
         ggplot(aes(date, Index, color = Name, label = Lab)) + # dates along the bottom and growth up the side
         annotate("rect", xmin = lubridate::ymd(20220101), xmax = lubridate::ymd(20221231), ymin = -Inf, ymax = Inf, fill = "firebrick", alpha = 0.08) + # shade the 2022 bond sell-off
         annotate("text", x = lubridate::ymd(20220701), y = min(D$Index) + 0.15, label = "2022 rate shock", color = "firebrick", fontface = "italic", size = fmxdat::ggpts(8.5), angle = 90, hjust = 0) + # name the shaded year, below the lines

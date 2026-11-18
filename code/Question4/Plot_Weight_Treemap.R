@@ -1,14 +1,14 @@
 # Plots the latest weights of each portfolio rule as treemaps, nested by asset family, so that the size of every holding and every family can be compared at a glance.
-Plot_Weight_Treemap <- function(W, Pal, Title = "Latest Portfolio Composition", Subtitle = "", Caption = "Note:\nCalculation own"){
+Plot_Weight_Treemap <- function(W, Pal, Title = "Latest Portfolio Composition", Subtitle = "", Caption = "Note:\nCalculation own"){ # define Plot_Weight_Treemap, with inputs W and Pal, plus the title, subtitle and caption text
 
-    D <-
-        W %>%
+    D <- # build D through the steps below
+        W %>% # start from W
         filter(date == max(date), Weight > 0.001) %>% # holdings on the latest rebalance date
         mutate(Family = Pal$Asset_Family[Asset], # each asset's family
                Strategy = factor(Strategy, levels = names(Pal$Strategy)), # the rules in a fixed order
                Lab = glue::glue("{Asset}\n{scales::percent(Weight, accuracy = 1)}")) # the asset and its weight
 
-    g <-
+    g <- # build the plot in layers and store it as g
         ggplot(D, aes(area = Weight, fill = Asset, subgroup = Family, label = Lab, color = Asset)) + # tile area in proportion to weight, grouped by family
         treemapify::geom_treemap(color = "white", size = 1.5) + # one tile per holding
         treemapify::geom_treemap_subgroup_border(color = "white", size = 4) + # thick borders around each family
@@ -19,6 +19,6 @@ Plot_Weight_Treemap <- function(W, Pal, Title = "Latest Portfolio Composition", 
         fmxdat::theme_fmx(title.size = fmxdat::ggpts(30), subtitle.size = fmxdat::ggpts(26), caption.size = fmxdat::ggpts(22), CustomCaption = T) + # the clean course theme with readable text sizes
         labs(title = Title, subtitle = Subtitle, caption = Caption) # title and note
 
-    g
+    g # return the finished plot
 
 }

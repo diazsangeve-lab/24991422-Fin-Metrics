@@ -1,13 +1,13 @@
 # Refits a chosen GARCH model to one series and traces its news impact curve over a common grid of shocks.
-Garch_NIC_Calc <- function(df, Series, Model, Shock_Range = 0.06, Ann = 252){
+Garch_NIC_Calc <- function(df, Series, Model, Shock_Range = 0.06, Ann = 252){ # define Garch_NIC_Calc, with inputs df, Series, Model, Shock_Range and Ann
 
     # For stepping through uncomment:
     # Series <- "Capped SWIX" ; Model <- "eGARCH"
 
     if( !Series %in% unique(df$Name) ) stop(glue::glue("... {Series} is not a Name in the data frame provided")) # stop early if the series does not exist
 
-    xts_rtn <-
-        df %>%
+    xts_rtn <- # build xts_rtn through the steps below
+        df %>% # start from the input data
         filter(Name == Series) %>% # keep only the chosen series
         filter(!is.na(dlogret)) %>% # the model cannot handle missing returns
         tbl2xts::tbl_xts(cols_to_xts = dlogret) # rugarch needs the data in xts format

@@ -1,5 +1,5 @@
 # Traces the efficient frontier on one date, under the full mandate and under the long only constraint alone, by minimising variance for a grid of target returns.
-Frontier_Calc <- function(Sigma, Mu, Cons, N_Points = 40){
+Frontier_Calc <- function(Sigma, Mu, Cons, N_Points = 40){ # define Frontier_Calc, with inputs Sigma, Mu, Cons and N_Points
 
     n <- ncol(Sigma) # the number of assets
     Loose <- list(Amat = cbind(1, diag(n)), bvec = c(1, rep(0, n)), meq = 1) # long only weights that sum to one, with no other limits

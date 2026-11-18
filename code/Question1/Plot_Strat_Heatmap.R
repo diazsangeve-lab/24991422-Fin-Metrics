@@ -1,10 +1,10 @@
 # Plots stratified volatility for several indexes and state variables as a grid of bubbles, sized by the volatility level and coloured by the ratio to normal.
-Plot_Strat_Heatmap <- function(df, Title = "Stratified Volatility Across Local Indexes", Subtitle = "", Caption = "Note:\nCalculation own"){
+Plot_Strat_Heatmap <- function(df, Title = "Stratified Volatility Across Local Indexes", Subtitle = "", Caption = "Note:\nCalculation own"){ # define Plot_Strat_Heatmap, with input df, plus the title, subtitle and caption text
 
     if( !all(c("Name", "State", "Regime", "SD", "Ratio") %in% names(df)) ) stop("... for Plot_Strat_Heatmap to work, first run Vol_Stratify") # stop early if the stratification results are missing
 
-    g <-
-        df %>%
+    g <- # build the plot in layers and store it as g
+        df %>% # start from the input data
         mutate(Regime = factor(glue::glue("{Regime} regime months"), levels = c("High regime months", "Low regime months"))) %>% # readable panel labels in a fixed order
         mutate(State = forcats::fct_reorder(State, Ratio, .fun = max)) %>% # order the state variables from the weakest to the strongest effect
         ggplot() + # start the plot

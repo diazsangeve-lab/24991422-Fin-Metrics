@@ -1,8 +1,8 @@
 # Plots the data history of every asset as a timeline, marking when each becomes eligible under the five year rule, the estimation window and the backtest window, with excluded assets shown faded.
-Plot_Universe_Timeline <- function(R_Long, Meta, Pal, Excluded = NULL, Est_Start = lubridate::ymd(20100101), Rebal_Dates, Min_Months = 60, Title = "The Investable Universe Through Time", Subtitle = "", Caption = "Note:\nCalculation own"){
+Plot_Universe_Timeline <- function(R_Long, Meta, Pal, Excluded = NULL, Est_Start = lubridate::ymd(20100101), Rebal_Dates, Min_Months = 60, Title = "The Investable Universe Through Time", Subtitle = "", Caption = "Note:\nCalculation own"){ # define Plot_Universe_Timeline, with inputs R_Long, Meta, Pal, Excluded, Est_Start, Rebal_Dates and Min_Months, plus the title, subtitle and caption text
 
-    Spans <-
-        R_Long %>%
+    Spans <- # build Spans through the steps below
+        R_Long %>% # start from R_Long
         group_by(Asset) %>% # one row per asset
         summarise(Start = min(date), End = max(date), Eligible = sort(date)[Min_Months], .groups = "drop") %>% # the first and last return, and the month the five year rule is first met
         bind_rows(Excluded) %>% # assets left out, with their reason
@@ -12,7 +12,7 @@ Plot_Universe_Timeline <- function(R_Long, Meta, Pal, Excluded = NULL, Est_Start
 
     Win <- tibble(xmin = c(Est_Start, min(Rebal_Dates)), xmax = c(min(Rebal_Dates), max(R_Long$date)), Lab = c("Estimation window only", "Quarterly rebalanced backtest"), Fill = c("grey85", "#FDD0A2")) # the two windows behind the timeline
 
-    g <-
+    g <- # build the plot in layers and store it as g
         ggplot(Spans) + # start the plot
         geom_rect(data = Win, aes(xmin = xmin, xmax = xmax, ymin = -Inf, ymax = Inf, fill = Fill), alpha = 0.45) + # shade the estimation and backtest windows
         scale_fill_identity() + # use the window colours as given
@@ -29,6 +29,6 @@ Plot_Universe_Timeline <- function(R_Long, Meta, Pal, Excluded = NULL, Est_Start
         theme(axis.text.y = element_text(color = Darken_Col(Spans$Col[match(levels(Spans$Asset), Spans$Asset)], 0.5), face = "bold")) + # colour each asset name by its family, in the order the axis lists them
         labs(x = "", y = "", title = Title, subtitle = Subtitle, caption = Caption) # axis names, title and note
 
-    g
+    g # return the finished plot
 
 }

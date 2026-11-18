@@ -1,5 +1,5 @@
 # Calculates the average pairwise correlation and the cap-weighted implied correlation of the largest index constituents over a trailing window on chosen dates.
-Avg_Corr_Calc <- function(Constituents, Dates, Lookback = 63, Top_N = 40, Ret_Cap = 0.5, Min_Coverage = 0.8){
+Avg_Corr_Calc <- function(Constituents, Dates, Lookback = 63, Top_N = 40, Ret_Cap = 0.5, Min_Coverage = 0.8){ # define Avg_Corr_Calc, with inputs Constituents, Dates, Lookback, Top_N, Ret_Cap and Min_Coverage
 
     # For stepping through uncomment:
     # Constituents <- SWIX_Cons ; Dates <- Month_Ends ; Lookback <- 63 ; Top_N <- 40
@@ -7,7 +7,7 @@ Avg_Corr_Calc <- function(Constituents, Dates, Lookback = 63, Top_N = 40, Ret_Ca
     Cons <- Constituents %>% mutate(Return = pmax(pmin(Return, Ret_Cap), -Ret_Cap)) # winsorise extreme daily returns
     All_Days <- sort(unique(Cons$date)) # every trading day, used to find the start of each window
 
-    Dates %>%
+    Dates %>% # start from the calculation dates
         map_df(function(d){ # repeat for every chosen date
             Window_Days <- tail(All_Days[All_Days <= d], Lookback) # the trailing Lookback trading days ending on the chosen date
             if( length(Window_Days) < Lookback ) return(NULL) # skip the date if the window is not yet full

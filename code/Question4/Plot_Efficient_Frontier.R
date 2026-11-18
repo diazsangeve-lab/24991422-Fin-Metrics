@@ -1,5 +1,5 @@
 # Plots the efficient frontier on the latest rebalance date, within the mandate and under the long only constraint alone, with every asset and the four portfolio rules marked.
-Plot_Efficient_Frontier <- function(Fr, W, Pal, Title = "The Efficient Frontier", Subtitle = "", Caption = "Note:\nCalculation own"){
+Plot_Efficient_Frontier <- function(Fr, W, Pal, Title = "The Efficient Frontier", Subtitle = "", Caption = "Note:\nCalculation own"){ # define Plot_Efficient_Frontier, with inputs Fr, W and Pal, plus the title, subtitle and caption text
 
     Last <- max(Fr$Frontiers$date) # the latest rebalance date
     Now <- Fr$Frontiers %>% filter(date == Last) # both frontiers on that date

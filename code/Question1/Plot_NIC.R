@@ -1,10 +1,10 @@
 # Plots news impact curves with inline labels, a shaded bad news half and the response to a chosen shock size marked on each curve.
-Plot_NIC <- function(df, Mark_Shock = 0.04, Title = "News Impact Curves", Subtitle = "", Caption = "Note:\nCalculation own"){
+Plot_NIC <- function(df, Mark_Shock = 0.04, Title = "News Impact Curves", Subtitle = "", Caption = "Note:\nCalculation own"){ # define Plot_NIC, with inputs df and Mark_Shock, plus the title, subtitle and caption text
 
     if( !all(c("Shock", "Vol") %in% names(df)) ) stop("... for Plot_NIC to work, first run Garch_NIC_Calc to create the 'Shock' and 'Vol' columns") # stop early if the curves are missing
 
-    Marks <-
-        df %>%
+    Marks <- # build Marks through the steps below
+        df %>% # start from the input data
         group_by(Name) %>% # one pair of points per curve
         summarise(Down = Vol[which.min(abs(Shock + Mark_Shock))], Up = Vol[which.min(abs(Shock - Mark_Shock))], .groups = "drop") %>% # the volatility after a fall and after a rise of the chosen size
         gather(Side, Vol, -Name) %>% # long format, one row per point
@@ -12,8 +12,8 @@ Plot_NIC <- function(df, Mark_Shock = 0.04, Title = "News Impact Curves", Subtit
 
     Ends <- df %>% group_by(Name) %>% filter(Shock == max(Shock)) %>% ungroup() # the right hand end of each curve, where its label goes
 
-    g <-
-        df %>%
+    g <- # build the plot in layers and store it as g
+        df %>% # start from the input data
         ggplot() + # start the plot
         annotate("rect", xmin = -Inf, xmax = 0, ymin = -Inf, ymax = Inf, fill = "firebrick", alpha = 0.06) + # shade the bad news half
         annotate("text", x = min(df$Shock), y = min(df$Vol), label = "Bad news", hjust = 0, vjust = 0, fontface = "bold", color = "firebrick", size = fmxdat::ggpts(10)) + # name the bad news half, in the empty bottom left corner

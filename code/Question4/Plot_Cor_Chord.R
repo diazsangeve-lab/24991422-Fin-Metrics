@@ -1,5 +1,5 @@
 # Draws the correlations between assets as a chord diagram, linking pairs whose correlation is strong, with link width set by its strength, blue links for positive and red links for negative correlations.
-Plot_Cor_Chord <- function(R_Long, Pal, Est_Start = lubridate::ymd(20100101), Pos_Threshold = 0.5, Neg_Threshold = -0.15, Title = "Correlation Links Across the Universe"){
+Plot_Cor_Chord <- function(R_Long, Pal, Est_Start = lubridate::ymd(20100101), Pos_Threshold = 0.5, Neg_Threshold = -0.15, Title = "Correlation Links Across the Universe"){ # define Plot_Cor_Chord, with inputs R_Long, Pal, Est_Start, Pos_Threshold and Neg_Threshold, plus the title, subtitle and caption text
 
     C <- R_Long %>% filter(date >= Est_Start) %>% select(date, Asset, Returns) %>% spread(Asset, Returns) %>% select(-date) %>% cor(use = "pairwise.complete.obs") # pairwise correlations of monthly returns since the estimation start
     C <- C[names(Pal$Asset), names(Pal$Asset)] # assets in family order around the circle

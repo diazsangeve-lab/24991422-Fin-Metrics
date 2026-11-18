@@ -274,7 +274,7 @@ SafeCore is only provided as a set of monthly holdings, so its daily returns are
 SafeCore_Rets <- Holdings_Returns_Calc(SafeCore, Stock_Returns, Start_Date = lubridate::ymd(20150101), Ret_Cap = 0.25, Port_Name = "SafeCore") # daily returns of SafeCore rebuilt from its monthly holdings
 BM_Rets <- Holdings_Returns_Calc(Monthly_Constituents %>% filter(Fund == "CappedSWIX"), Stock_Returns, Start_Date = lubridate::ymd(20150101), Ret_Cap = 0.25, Port_Name = "Capped SWIX") # daily returns of the Capped SWIX rebuilt in exactly the same way
 J433_Published <- Idx_Daily %>% filter(Tickers == "J433") %>% select(date, Returns) %>% mutate(Name = "Published") # the published index returns, used only to validate the rebuild
-Rebuild_Check <-
+Rebuild_Check <- # build Rebuild_Check through the steps below
     bind_rows(BM_Rets %>% mutate(Name = "Rebuilt"), J433_Published) %>% # stack the rebuilt and published benchmark returns
     group_by(Name, Year = as.character(lubridate::year(date))) %>% # one number per series per calendar year
     summarise(Return = prod(1 + Returns) - 1, .groups = "drop") %>% # chain the daily returns into a calendar year return
@@ -300,7 +300,7 @@ Plot_Fund_Capture(Stats_All, BM_Name = "Capped SWIX", Fund_Name = "SafeCore", # 
                   Caption = "Note:\nMonthly returns. Capture ratios use the arithmetic calculation. Modified CVaR shown as a positive loss. Calculation own.") # the note under the plot
 ```
 
-SafeCore has delivered a better return than its benchmark, but it has not done so by managing volatility. Over the full sample the fund returned 11.1 percent a year against 8.6 percent, with an information ratio of `r Fact_Pull(Stats_Facts, "2015-2026", "Information Ratio", Key_Col = "Period")`, yet its volatility of 14.5 percent was slightly higher than the benchmark's 14.0 percent. Its beta of `r Fact_Pull(Stats_Facts, "2015-2026", "Beta", Key_Col = "Period")` shows that it moves one for one with the market, and its down capture of 0.98 means that it suffered almost the full extent of the benchmark's losses in falling months. The fund's protective features are modest. Its maximum drawdown of 27.8 percent was shallower than the benchmark's 31.2 percent, and its modified CVaR was marginally lower. The outperformance therefore came from stock selection in rising markets, with an up capture of 1.09, and not from protection in falling ones. The more recent period is less flattering still. Since 2020 the fund's down capture has risen to 1.09, so it has lost more than the benchmark in falling months, and its information ratio has fallen to `r Fact_Pull(Stats_Facts, "2020-2026", "Information Ratio", Key_Col = "Period")`.
+SafeCore has delivered a better return than its benchmark, but it has not done so by managing volatility. Over the full sample the fund returned 10.9 percent a year against 8.4 percent, with an information ratio of `r Fact_Pull(Stats_Facts, "2015-2026", "Information Ratio", Key_Col = "Period")`, yet its volatility of 14.6 percent was slightly higher than the benchmark's 14.0 percent. Its beta of `r Fact_Pull(Stats_Facts, "2015-2026", "Beta", Key_Col = "Period")` shows that it moves one for one with the market, and its down capture of 0.98 means that it suffered almost the full extent of the benchmark's losses in falling months. The fund's protective features are modest. Its maximum drawdown of 27.9 percent was shallower than the benchmark's 31.7 percent, and its modified CVaR was marginally lower. The outperformance therefore came from stock selection in rising markets, with an up capture of 1.09, and not from protection in falling ones. The more recent period is less flattering still. Since 2020 the fund's down capture has risen to 1.09, so it has lost more than the benchmark in falling months, and its information ratio has fallen to `r Fact_Pull(Stats_Facts, "2020-2026", "Information Ratio", Key_Col = "Period")`.
 
 ### Daily Tail Risk
 
@@ -395,8 +395,8 @@ Score_Dates <- sort(unique(Factor_Scores$date)) # the month ends on which the ve
 Own_Scores <- Own_Factor_Scores(Stock_Returns, Score_Dates, Mom_Months = 6, Skip_Months = 1, Vol_Months = 6, Ret_Cap = 0.25, Min_Coverage = 0.8) # own 6-1 momentum and 6 month realised volatility for every stock
 Own_Mom12 <- Own_Factor_Scores(Stock_Returns, Score_Dates, Mom_Months = 12, Skip_Months = 1, Vol_Months = 6) %>% select(date, Tickers, Mom12_Raw = Mom_Raw) # a 12-1 momentum variant, used only as a diagnostic
 Stock_Betas <- Stock_Beta_Calc(Stock_Returns, Idx_Daily %>% filter(Tickers == "J433") %>% select(date, Mkt = Returns), Score_Dates, Months = 12) # market and downside betas against the Capped SWIX, used only as a diagnostic
-Scores_All <-
-    Factor_Scores %>%
+Scores_All <- # build Scores_All through the steps below
+    Factor_Scores %>% # start from the vendor factor scores
     spread(Factor, Factor_Value) %>% # one column per vendor factor
     left_join(Own_Scores, by = c("date", "Tickers")) %>% # attach the own measures
     left_join(Own_Mom12, by = c("date", "Tickers")) %>% # attach the 12-1 momentum variant
@@ -417,7 +417,7 @@ Score_Pairs <- tibble(X = c("Momentum_Own", "Momentum12_Own", "LowVol_Own"), # t
 Score_Cor <- Score_Rank_Cor(Scores_All, Score_Pairs) # the monthly rank correlation of each pair
 Own_Names <- c(Beta = "Market beta", Downside_Beta = "Downside beta", LowVol_Own = "Own low volatility", Momentum_Own = "Own 6-1 momentum", Momentum12_Own = "Own 12-1 momentum") # readable names for the own measures
 Diag_Pairs <- tidyr::expand_grid(Y = c("Earnings Quality", "Growth", "Momentum", "Value", "Volatility Sensitivity"), X = names(Own_Names)) %>% mutate(Label = paste(X, Y, sep = " | ")) # every own measure against every vendor factor, with a label that can be split again
-Score_Diag <-
+Score_Diag <- # build Score_Diag through the steps below
     Score_Rank_Cor(Scores_All, Diag_Pairs) %>% # the monthly rank correlation of every combination
     group_by(Label) %>% # one number per combination
     summarise(Rho = mean(Rho)) %>% # the average over all months
@@ -438,16 +438,16 @@ The vendor's volatility score is more problematic. It has an average rank correl
 To place SafeCore's exposures in context, each portfolio's composite score for a factor is calculated as the weighted average of its holdings' z-scores, rescaled over the holdings that have a score. The same calculation is applied to the Capped SWIX and to the local strategy, size and property indexes, so that SafeCore can be compared with portfolios built deliberately to hold each factor. Since the vendor scores are z-scores within a universe of mostly larger stocks, a score of zero represents the average stock in that universe. The lollipop small multiples show one factor per panel, with SafeCore in orange, the benchmark in black and the other strategies in grey.
 
 ```{r q1b_composite, fig.width = 11, fig.height = 7}
-Strategy_Holdings <-
-    Local_Index_Constituents %>%
+Strategy_Holdings <- # build Strategy_Holdings through the steps below
+    Local_Index_Constituents %>% # start from the local index constituents
     mutate(YM = format(date, "%Y%m")) %>% # a year and month label
     group_by(Index, YM) %>% # one set of holdings per index per month
     filter(date == max(date)) %>% # keep the last trading day of each month
     ungroup() %>% # remove the grouping again
     select(date, Portfolio = Index, Tickers, Weight = weight) # the shape that the composite score function expects
 All_Holdings <- bind_rows(Strategy_Holdings, SafeCore %>% filter(date >= lubridate::ymd(20200101)) %>% select(date, Portfolio = Fund, Tickers, Weight)) # the strategy indexes and SafeCore together
-Scores_Long <-
-    Scores_All %>%
+Scores_Long <- # build Scores_Long through the steps below
+    Scores_All %>% # start from Scores_All
     select(date, Tickers, `Earnings Quality`, Growth, Value, `Vendor Momentum` = Momentum, `Vendor Volatility Sensitivity` = `Volatility Sensitivity`, # the vendor factors
            `Own Momentum (6-1)` = Momentum_Own, `Own Low Volatility` = LowVol_Own) %>% # and the own scores
     gather(Factor, Score, -date, -Tickers) # long format, one row per stock, factor and month
@@ -468,8 +468,8 @@ Average exposures can conceal changes in a fund's character. The small multiples
 
 ```{r q1b_active, fig.width = 10, fig.height = 8}
 Active_Factors <- c("Own Low Volatility", "Vendor Volatility Sensitivity", "Own Momentum (6-1)", "Vendor Momentum", "Earnings Quality", "Value") # the factors most relevant to the volatility question, leaving out growth, which sits close to zero throughout
-Active_Period <-
-    Port_Factor_Scores %>%
+Active_Period <- # build Active_Period through the steps below
+    Port_Factor_Scores %>% # start from Port_Factor_Scores
     filter(Portfolio %in% c("SafeCore", "Capped SWIX"), Factor %in% Active_Factors, date >= lubridate::ymd(20200801)) %>% # the fund and benchmark scores for the chosen factors
     select(date, Portfolio, Factor, Score) %>% # keep only what the summary needs
     spread(Portfolio, Score) %>% # one column for the fund and one for the benchmark
@@ -568,10 +568,10 @@ A wider opportunity set should allow skilled managers to separate from the rest.
 
 ```{r q1c_managers}
 Active_Managers <- read_rds("data/Active_Managers.rds") # monthly returns of the active manager universe
-BM_Monthly <- Idx_Daily %>% filter(Tickers == "J433") %>% mutate(YM = format(date, "%Y%m")) %>% group_by(YM) %>% summarise(BM = prod(1 + Returns) - 1) # monthly Capped SWIX returns, keyed by year and month
-Hit_Rate <- Manager_Hit_Rate(Active_Managers, BM_Monthly, NSel = 12) # share of managers beating the benchmark and the spread of their excess returns over rolling 12 months
-Opportunity <-
-    Dispersion %>%
+Q1_BM_Monthly <- Idx_Daily %>% filter(Tickers == "J433") %>% mutate(YM = format(date, "%Y%m")) %>% group_by(YM) %>% summarise(BM = prod(1 + Returns) - 1) # monthly Capped SWIX returns, keyed by year and month
+Hit_Rate <- Manager_Hit_Rate(Active_Managers, Q1_BM_Monthly, NSel = 12) # share of managers beating the benchmark and the spread of their excess returns over rolling 12 months
+Opportunity <- # build Opportunity through the steps below
+    Dispersion %>% # start from Dispersion
     mutate(YM = format(date, "%Y%m")) %>% # a year and month label
     group_by(YM) %>% filter(date == max(date)) %>% ungroup() %>% # the dispersion reading at each month end, which covers that month
     arrange(date) %>% # order by date before rolling
@@ -610,8 +610,8 @@ Macro_Gauges <- bind_rows(Implied_Vol, Uncertainty_Indexes, Local_Cncy_Vol_Index
 Commod_Rets <- Commods %>% TRI_Returns_Calc(Start_Date = lubridate::ymd(20200101)) # daily commodity returns, from which monthly oil and gold volatility are measured
 Macro_Names <- c(VIX = "US implied vol (VIX)", MOVE_Index = "Bond vol (MOVE)", EPUCGLCP = "Global policy uncertainty", Oil_Brent_Vol = "Brent oil vol", Gold_Vol = "Gold vol", SAVIUSD = "Rand vol (SAVIUSD)") # readable names for the macro variables
 Macro_Monthly <- State_Monthly_Calc(Level_df = Macro_Gauges, Level_Sel = c("VIX", "MOVE_Index", "EPUCGLCP", "SAVIUSD"), Vol_df = Commod_Rets, Vol_Sel = c("Oil_Brent", "Gold")) %>% mutate(State = recode(State, !!!Macro_Names)) %>% spread(State, Value) # one row per month with every macro variable as a column
-Macro_Panel <-
-    Dispersion %>%
+Macro_Panel <- # build Macro_Panel through the steps below
+    Dispersion %>% # start from Dispersion
     mutate(YM = format(date, "%Y%B")) %>% # the same year and month label that State_Monthly_Calc uses
     group_by(YM) %>% filter(date == max(date)) %>% ungroup() %>% # the dispersion reading at each month end
     left_join(Corr %>% mutate(YM = format(date, "%Y%B")) %>% select(YM, Implied_Corr), by = "YM") %>% # attach the implied correlation of the same month
@@ -714,7 +714,7 @@ The holdings are now combined with the daily stock returns to measure how volati
 ```{r q2_volatility, fig.width = 11, fig.height = 5}
 Size_Dates <- Size_Hold %>% filter(date >= lubridate::ymd(20150401)) %>% distinct(date) %>% pull(date) # month ends with at least three months of daily stock returns behind them
 Size_Vol <- Size_Vol_Calc(Size_Hold, Stock_Returns, Size_Dates, Lookback = 63, Ret_Cap = 0.25, Min_Coverage = 0.8) # average constituent volatility, index volatility and the diversification ratio at every month end
-Vol_Facts <- Size_Vol %>% mutate(Period = case_when(lubridate::year(date) == 2026 ~ "2026", date >= lubridate::ymd(20200301) & date <= lubridate::ymd(20200630) ~ "Covid", TRUE ~ "Other")) %>% group_by(Fund, Period) %>% summarise(Avg_Vol = mean(Avg_Vol), Index_Vol = mean(Index_Vol), DR = mean(Div_Ratio), .groups = "drop") %>% mutate(Key = paste(Fund, Period)) # averages in 2026, in the Covid crash and in all other months, used in the text
+Q2_Vol_Facts <- Size_Vol %>% mutate(Period = case_when(lubridate::year(date) == 2026 ~ "2026", date >= lubridate::ymd(20200301) & date <= lubridate::ymd(20200630) ~ "Covid", TRUE ~ "Other")) %>% group_by(Fund, Period) %>% summarise(Avg_Vol = mean(Avg_Vol), Index_Vol = mean(Index_Vol), DR = mean(Div_Ratio), .groups = "drop") %>% mutate(Key = paste(Fund, Period)) # averages in 2026, in the Covid crash and in all other months, used in the text
 Vol_Avg <- Size_Vol %>% group_by(Fund) %>% summarise(Avg_Vol = mean(Avg_Vol), Index_Vol = mean(Index_Vol), DR = mean(Div_Ratio)) # full sample averages, used in the text
 Plot_Size_Diversification(Size_Vol, Smooth_N = 3, # constituent and index volatility in every index
                           Title = "Constituent and Index Volatility by Size", # the plot title
@@ -724,15 +724,15 @@ Plot_Size_Diversification(Size_Vol, Smooth_N = 3, # constituent and index volati
 
 The figure shows the most distinctive trait of the small caps. Their constituents are the most volatile of the three indexes, at an average of `r Fact_Pull(Vol_Avg, "Small Caps", "Avg_Vol", Key_Col = "Fund", Pct = 1)` against `r Fact_Pull(Vol_Avg, "Large Caps", "Avg_Vol", Key_Col = "Fund", Pct = 1)` for the large caps, yet the small-cap index is the calmest, at `r Fact_Pull(Vol_Avg, "Small Caps", "Index_Vol", Key_Col = "Fund", Pct = 1)` against `r Fact_Pull(Vol_Avg, "Large Caps", "Index_Vol", Key_Col = "Fund", Pct = 1)`. The diversification ratio of the small caps averaged `r Fact_Pull(Vol_Avg, "Small Caps", "DR", Key_Col = "Fund", Digits = 1)` against `r Fact_Pull(Vol_Avg, "Large Caps", "DR", Key_Col = "Fund", Digits = 1)` for the large caps. Small-cap stocks are driven mostly by their own news, such as a single property portfolio or a regional retailer, so their shocks are largely unrelated and cancel out inside the index. Large-cap stocks share common drivers, namely commodity prices, the rand and global risk appetite, so far less of their risk diversifies away.
 
-That benefit is not stable. During the Covid crash between March and June 2020, average small-cap stock volatility reached `r Fact_Pull(Vol_Facts, "Small Caps Covid", "Avg_Vol", Key_Col = "Key", Pct = 1)` and the diversification ratio fell to `r Fact_Pull(Vol_Facts, "Small Caps Covid", "DR", Key_Col = "Key", Digits = 1)`, as every stock fell together. In 2026 the pattern reversed between sizes. The gold miners pushed average large-cap stock volatility to `r Fact_Pull(Vol_Facts, "Large Caps 2026", "Avg_Vol", Key_Col = "Key", Pct = 1)`, above the `r Fact_Pull(Vol_Facts, "Small Caps 2026", "Avg_Vol", Key_Col = "Key", Pct = 1)` of small-cap stocks, while the small-cap diversification ratio slipped to `r Fact_Pull(Vol_Facts, "Small Caps 2026", "DR", Key_Col = "Key", Digits = 1)` from `r Fact_Pull(Vol_Facts, "Small Caps Other", "DR", Key_Col = "Key", Digits = 1)` in other months.
+That benefit is not stable. During the Covid crash between March and June 2020, average small-cap stock volatility reached `r Fact_Pull(Q2_Vol_Facts, "Small Caps Covid", "Avg_Vol", Key_Col = "Key", Pct = 1)` and the diversification ratio fell to `r Fact_Pull(Q2_Vol_Facts, "Small Caps Covid", "DR", Key_Col = "Key", Digits = 1)`, as every stock fell together. In 2026 the pattern reversed between sizes. The gold miners pushed average large-cap stock volatility to `r Fact_Pull(Q2_Vol_Facts, "Large Caps 2026", "Avg_Vol", Key_Col = "Key", Pct = 1)`, above the `r Fact_Pull(Q2_Vol_Facts, "Small Caps 2026", "Avg_Vol", Key_Col = "Key", Pct = 1)` of small-cap stocks, while the small-cap diversification ratio slipped to `r Fact_Pull(Q2_Vol_Facts, "Small Caps 2026", "DR", Key_Col = "Key", Digits = 1)` from `r Fact_Pull(Q2_Vol_Facts, "Small Caps Other", "DR", Key_Col = "Key", Digits = 1)` in other months.
 
 Part of the small caps' calm is also a measurement effect. Small stocks trade thinly, so their prices often go unchanged for days and then catch up, which smooths daily returns and understates volatility measured from them.
 
 ```{r q2_thin_trading}
 Size_Pub <- Idx_Daily %>% filter(Tickers %in% c("J433", "J200", "J201", "J202")) %>% mutate(Name = recode(Name, "Top 40" = "Large Caps", MidCaps = "Mid Caps", SmallCaps = "Small Caps")) %>% select(date, Name, Returns) # daily returns of the published Capped SWIX and size indexes, with the same names as the constituent indexes
 Size_Monthly <- Monthly_Returns_Calc(Size_Pub) # calendar month returns of each published index
-Thin_Facts <-
-    Size_Pub %>%
+Thin_Facts <- # build Thin_Facts through the steps below
+    Size_Pub %>% # start from Size_Pub, built above
     group_by(Name) %>% # one row per index
     summarise(Vol_Daily = sd(Returns) * sqrt(252), .groups = "drop") %>% # annualised volatility measured from daily returns
     left_join(Size_Monthly %>% arrange(date) %>% group_by(Name) %>% summarise(Vol_Monthly = sd(Returns) * sqrt(12), AC1 = cor(Returns, dplyr::lag(Returns), use = "complete.obs"), .groups = "drop"), by = "Name") # annualised volatility from monthly returns and the first order autocorrelation of monthly returns
@@ -781,14 +781,14 @@ Rolling returns show how the ranking of the indexes has changed from one investm
 ```{r q2_rolling}
 Size_Roll <- Roll_Return_Calc(Size_Monthly, NSel = 36) # rolling three year annualised returns of each index
 Roll_Wide <- Size_Roll %>% select(date, Name, RollRet) %>% spread(Name, RollRet) # one column per index
-Roll_Facts <- Size_Roll %>% group_by(Name) %>% summarise(Min = min(RollRet), Max = max(RollRet), Min_Date = date[which.min(RollRet)], Max_Date = date[which.max(RollRet)], Last = dplyr::last(RollRet), .groups = "drop") # the range and latest value of each index, used in the text
+Q2_Roll_Facts <- Size_Roll %>% group_by(Name) %>% summarise(Min = min(RollRet), Max = max(RollRet), Min_Date = date[which.min(RollRet)], Max_Date = date[which.max(RollRet)], Last = dplyr::last(RollRet), .groups = "drop") # the range and latest value of each index, used in the text
 Plot_Size_Rolling(Size_Roll, # rolling returns with the small-cap lead shaded
                   Title = "Rolling 3 Year Annualised Returns", # the plot title
                   Subtitle = "Small caps have the widest range of outcomes and have led large caps for most of the period since 2022", # the main message
                   Caption = "Note:\nRolling 36 month annualised returns of the published indexes. Blue shading marks months in which small caps beat large caps. Calculation own.") # the note under the plot
 ```
 
-Small caps have the widest range of three year outcomes, from `r Fact_Pull(Roll_Facts, "Small Caps", "Min", Pct = 0.1)` in `r format(Roll_Facts$Min_Date[Roll_Facts$Name == "Small Caps"], "%B %Y")` to `r Fact_Pull(Roll_Facts, "Small Caps", "Max", Pct = 0.1)` in `r format(Roll_Facts$Max_Date[Roll_Facts$Name == "Small Caps"], "%B %Y")`, while the worst three year return of the large caps was `r Fact_Pull(Roll_Facts, "Large Caps", "Min", Pct = 0.1)`. An investor who bought small caps in early 2017 and held them for three years would have lost money, even though the index looked calm on a daily basis throughout. The two segments led in turn, with small caps ahead in `r Pct_Text(mean(Roll_Wide$"Small Caps" > Roll_Wide$"Large Caps", na.rm = TRUE))` of months, `r Pct_Text(mean(Roll_Wide$date[Roll_Wide$"Small Caps" > Roll_Wide$"Large Caps"] >= lubridate::ymd(20220101)))` of them from 2022 onwards. The rolling returns of small and large caps have a correlation of `r sprintf("%.2f", cor(Roll_Wide$"Small Caps", Roll_Wide$"Large Caps", use = "complete.obs"))`, the lowest of any pair, so over a three year horizon the small caps are the size segment that most changes the outcome of a portfolio built around the benchmark.
+Small caps have the widest range of three year outcomes, from `r Fact_Pull(Q2_Roll_Facts, "Small Caps", "Min", Pct = 0.1)` in `r format(Q2_Roll_Facts$Min_Date[Q2_Roll_Facts$Name == "Small Caps"], "%B %Y")` to `r Fact_Pull(Q2_Roll_Facts, "Small Caps", "Max", Pct = 0.1)` in `r format(Q2_Roll_Facts$Max_Date[Q2_Roll_Facts$Name == "Small Caps"], "%B %Y")`, while the worst three year return of the large caps was `r Fact_Pull(Q2_Roll_Facts, "Large Caps", "Min", Pct = 0.1)`. An investor who bought small caps in early 2017 and held them for three years would have lost money, even though the index looked calm on a daily basis throughout. The two segments led in turn, with small caps ahead in `r Pct_Text(mean(Roll_Wide$"Small Caps" > Roll_Wide$"Large Caps", na.rm = TRUE))` of months, `r Pct_Text(mean(Roll_Wide$date[Roll_Wide$"Small Caps" > Roll_Wide$"Large Caps"] >= lubridate::ymd(20220101)))` of them from 2022 onwards. The rolling returns of small and large caps have a correlation of `r sprintf("%.2f", cor(Roll_Wide$"Small Caps", Roll_Wide$"Large Caps", use = "complete.obs"))`, the lowest of any pair, so over a three year horizon the small caps are the size segment that most changes the outcome of a portfolio built around the benchmark.
 
 ## Returns Over Different Horizons
 
@@ -814,7 +814,7 @@ Size_States <- bind_rows(State_Monthly_Calc(Level_df = bind_rows(Implied_Vol, Lo
                          Size_Monthly %>% filter(Name == "Capped SWIX") %>% transmute(YM, State = "Market return", Value = Returns)) # the monthly return of the benchmark as a third state
 Size_Strat <- Size_Stratify(Size_Monthly %>% filter(Name != "Capped SWIX"), Size_States, Hi_Q = 0.8, Lo_Q = 0.2) # annualised return and volatility of each size index in the top and bottom quintile months
 Strat_Facts <- Size_Strat %>% mutate(Key = paste(State, Regime, Name)) # a key for the inline numbers in the text
-Size_Strat %>%
+Size_Strat %>% # start from Size_Strat, built above
     mutate(State = recode(State, "Market return" = "Capped SWIX return", SAVIUSD = "Rand volatility (SAVIUSD)", VIX = "US implied volatility (VIX)")) %>% # readable panel names
     Plot_Size_Slopes(Title = "Size Indexes in Calm and Stressed Regimes", # slopes from the bottom to the top quintile of each state
                      Subtitle = "Small caps lose least when the market falls but suffer the largest losses when the rand is volatile", # the main message
@@ -835,7 +835,7 @@ For an investor, the indexes are therefore not interchangeable ways of owning lo
 
 ## Approach
 
-This question prepares a short slide deck for a portfolio manager who will speak at a conference and wants to make the case for ABC Fund using returns alone. The audience is not quantitative, so every slide carries one message in its headline, the figures avoid jargon, and the speaker notes explain each figure in plain language. The deck is stored as `Questions/Question3/Question3.pptx` and is knitted from `Question3.Rmd` with a reference template that sets slide sized fonts.
+This question prepares a short slide deck for a portfolio manager who will speak at a conference and wants to make the case for ABC Fund using returns alone. The audience is not quantitative, so every slide carries one message in its headline, a single sentence under it states the reading of the figure in plain language, and the figures avoid jargon. The deck is stored as `Questions/Question3/Question3.pptx` and is knitted from `Question3.Rmd` with a reference template that sets slide sized fonts.
 
 The manager suggested four themes, namely how high the typical rolling beta of active managers is, how different ABC Fund is in what drives its returns, how it has performed relative to peers over time, and whether it does well when market dispersion is high. Each theme is treated as a claim to be tested. Where the evidence supports the claim, the deck shows it plainly, and where it supports the claim only under a particular framing, the deck says so, since a sceptical audience at a conference will probe exactly those points.
 
@@ -959,7 +959,7 @@ ABC Fund finished in the top half of the peer group in `r sum(Q3_Cal$Pct >= 0.5)
 
 The final claim is that ABC Fund performs well when market dispersion is high. Dispersion is measured as the weighted cross-sectional standard deviation of Capped SWIX constituent returns in each month, using index weights from the previous month end and winsorising daily stock returns at 25 percent. This extends the dispersion measure of Question 1 back to 2015 by building it from the monthly constituent weights and daily stock returns.
 
-The claim is tested in two ways, because the answer depends on the framing. Month by month, ABC Fund's raw return above the benchmark has almost no relationship with dispersion. High dispersion months are often strong rising markets, in which a fund with a beta near one half lags by construction. Removing each fund's market exposure, and measuring over 12 month windows that match how clients judge performance, isolates the stock selection the manager has in mind.
+The claim is tested in two ways, because the answer depends on the framing. Month by month, ABC Fund's raw return above the benchmark has almost no relationship with dispersion. High dispersion months are often strong rising markets, in which a fund with a beta near one half lags by construction. Removing each fund's market exposure, and measuring over 12 month windows that match how clients judge performance, isolates the stock selection the manager has in mind. Market exposure is measured with each fund's beta over the trailing 36 months, so the alpha in any window uses no information from later months.
 
 ```{r q3_dispersion, fig.width = 11, fig.height = 5.5}
 Q3_Disp <- Market_Dispersion_Calc(Monthly_Constituents %>% filter(Fund == "CappedSWIX"), Stock_Returns, Ret_Cap = 0.25) # monthly market dispersion from 2015
@@ -971,14 +971,14 @@ Monthly_Cor <- Univ %>% filter(Group == "ABC Fund", !is.na(BM)) %>% inner_join(Q
 Plot_Dispersion_Alpha(Q3_DA, Fund_Label = "ABC Fund", # dispersion against trailing alpha
                       Title = "Market Dispersion and 12 Month Alpha", # the plot title
                       Subtitle = "Once market exposure is removed, ABC Fund's lead over the typical peer widens as stocks diverge", # the main message
-                      Caption = "Note:\nDispersion is the weighted spread of Capped SWIX constituent returns each month. Alpha removes each fund's market exposure. Calculation own.") # the note under the plot
+                      Caption = "Note:\nDispersion is the weighted spread of Capped SWIX constituent returns each month. Alpha removes each fund's market exposure, using its beta over the trailing three years. Calculation own.") # the note under the plot
 ```
 
-The monthly correlation between ABC Fund's raw excess return and dispersion is only `r sprintf("%.2f", Monthly_Cor)`, so the claim does not hold in its simplest form. Over 12 month windows and after removing market exposure, the result changes. ABC Fund's alpha rises with dispersion, with a slope of `r sprintf("%.2f", NW_Fund$Estimate)` and a p-value of `r sprintf("%.3f", NW_Fund$p)` using Newey-West standard errors with 12 lags, which allow for the overlap between windows. Its lead over the typical peer also widens significantly, with a p-value of `r sprintf("%.3f", NW_Gap$p)`. In the most dispersed third of windows, ABC Fund's 12 month alpha averaged `r Pct_Text(DA_Terc$Fund[3], 0.1)` against `r Pct_Text(DA_Terc$Peer[3], 0.1)` for the typical peer, and it was ahead in `r Pct_Text(DA_Terc$Hit[3])` of those windows. The deck therefore supports the manager's claim in this framing, and the speaker notes frame it narrowly, stating that high dispersion has rewarded the fund's stock selection over a year once its lower market exposure is allowed for.
+The monthly correlation between ABC Fund's raw excess return and dispersion is only `r sprintf("%.2f", Monthly_Cor)`, so the claim does not hold in its simplest form. Over 12 month windows and after removing market exposure, the result changes. ABC Fund's alpha rises with dispersion, with a slope of `r sprintf("%.2f", NW_Fund$Estimate)` and a p-value of `r sprintf("%.3f", NW_Fund$p)` using Newey-West standard errors with 12 lags, which allow for the overlap between windows. That relationship is significant at the 10 percent level but not at the 5 percent level. The fund's lead over the typical peer widens more clearly, with a p-value of `r sprintf("%.3f", NW_Gap$p)`. In the most dispersed third of windows, ABC Fund's 12 month alpha averaged `r Pct_Text(DA_Terc$Fund[3], 0.1)` against `r Pct_Text(DA_Terc$Peer[3], 0.1)` for the typical peer, and it was ahead in `r Pct_Text(DA_Terc$Hit[3])` of those windows. The deck therefore supports the manager's claim in this framing, and frames it narrowly, stating that high dispersion has rewarded the fund's stock selection over a year once its lower market exposure is allowed for.
 
 ## Conclusion to Question 3
 
-The evidence supports the manager's case. The typical active manager delivers mostly market beta, with a median rolling beta of between `r sprintf("%.2f", Beta_Range[1])` and `r sprintf("%.2f", Beta_Range[2])` since 2019, while ABC Fund has earned a higher return than most peers with roughly half the market exposure, lower volatility and shallower drawdowns. Its returns depend far less on the market than those of almost any peer, and it has finished in the top half of the peer group in most years. The dispersion claim holds once performance is measured over a year and adjusted for market exposure, but not in raw monthly returns, and the description of the fund as contrarian to other managers is the weakest part of the case. The deck closes by advising the manager to lead with independence from the market and the risk record, to frame dispersion carefully, and to acknowledge openly that a lower beta fund will lag in sharp rallies.
+The evidence supports the manager's case. The typical active manager delivers mostly market beta, with a median rolling beta of between `r sprintf("%.2f", Beta_Range[1])` and `r sprintf("%.2f", Beta_Range[2])` since 2019, while ABC Fund has earned a higher return than most peers with roughly half the market exposure, lower volatility and shallower drawdowns. Its returns depend far less on the market than those of almost any peer, and it has finished in the top half of the peer group in most years. The dispersion claim holds once performance is measured over a year and adjusted for market exposure, most clearly in the fund's lead over the typical peer, but not in raw monthly returns, and the description of the fund as contrarian to other managers is the weakest part of the case. The deck closes by advising the manager to lead with independence from the market and the risk record, to frame dispersion carefully, and to acknowledge openly that a lower beta fund will lag in sharp rallies.
 
 # Question 4, Portfolio Construction
 
@@ -1002,23 +1002,23 @@ The universe combines four offshore regional equity indexes and United States re
 
 ```{r q4_universe, fig.width = 11, fig.height = 7}
 Q4_Meta <- tribble(~Asset, ~Source, ~Source_Name, ~Class, ~Region, # the universe, each asset's source, asset class and region
-                   "US equity", "MSCI", "MSCI_USA", "Equity", "Global",
-                   "Europe equity", "MSCI", "MSCI_EU", "Equity", "Global",
-                   "Japan equity", "MSCI", "MSCI_Jap", "Equity", "Global",
-                   "EM equity", "MSCI", "MSCI_EM", "Equity", "Global",
-                   "US REITs", "MSCI", "MSCI_USREIT", "Equity", "Global",
-                   "US 10Yr bond", "Bonds", "US_10Yr", "Bonds", "Global",
-                   "Euro 10Yr bond", "Bonds", "EURO_10Yr", "Bonds", "Global",
-                   "UK 10Yr bond", "Bonds", "UK_10Yr", "Bonds", "Global",
-                   "Commodities", "Commods", "Bcom_Index", "Commodity", "Global",
-                   "Gold", "Commods", "Gold", "Commodity", "Global",
-                   "SA large caps", "Local", "Top 40", "Equity", "Local",
-                   "SA mid caps", "Local", "MidCaps", "Equity", "Local",
-                   "SA momentum", "Local", "Mom", "Equity", "Local",
-                   "SA value", "Local", "Val", "Equity", "Local",
-                   "SA bonds", "LCL", "FTSE/JSE All Bond", "Bonds", "Local",
-                   "SA inflation-linked", "LCL", "FTSE/JSE SA Inflation-Linked Government Bonds", "Bonds", "Local",
-                   "SA property", "LCL", "FTSE/JSE SA Listed Property", "Equity", "Local")
+                   "US equity", "MSCI", "MSCI_USA", "Equity", "Global", # one asset, with its label, source file, series name, asset class and region
+                   "Europe equity", "MSCI", "MSCI_EU", "Equity", "Global", # one asset, with its label, source file, series name, asset class and region
+                   "Japan equity", "MSCI", "MSCI_Jap", "Equity", "Global", # one asset, with its label, source file, series name, asset class and region
+                   "EM equity", "MSCI", "MSCI_EM", "Equity", "Global", # one asset, with its label, source file, series name, asset class and region
+                   "US REITs", "MSCI", "MSCI_USREIT", "Equity", "Global", # one asset, with its label, source file, series name, asset class and region
+                   "US 10Yr bond", "Bonds", "US_10Yr", "Bonds", "Global", # one asset, with its label, source file, series name, asset class and region
+                   "Euro 10Yr bond", "Bonds", "EURO_10Yr", "Bonds", "Global", # one asset, with its label, source file, series name, asset class and region
+                   "UK 10Yr bond", "Bonds", "UK_10Yr", "Bonds", "Global", # one asset, with its label, source file, series name, asset class and region
+                   "Commodities", "Commods", "Bcom_Index", "Commodity", "Global", # one asset, with its label, source file, series name, asset class and region
+                   "Gold", "Commods", "Gold", "Commodity", "Global", # one asset, with its label, source file, series name, asset class and region
+                   "SA large caps", "Local", "Top 40", "Equity", "Local", # one asset, with its label, source file, series name, asset class and region
+                   "SA mid caps", "Local", "MidCaps", "Equity", "Local", # one asset, with its label, source file, series name, asset class and region
+                   "SA momentum", "Local", "Mom", "Equity", "Local", # one asset, with its label, source file, series name, asset class and region
+                   "SA value", "Local", "Val", "Equity", "Local", # one asset, with its label, source file, series name, asset class and region
+                   "SA bonds", "LCL", "FTSE/JSE All Bond", "Bonds", "Local", # one asset, with its label, source file, series name, asset class and region
+                   "SA inflation-linked", "LCL", "FTSE/JSE SA Inflation-Linked Government Bonds", "Bonds", "Local", # one asset, with its label, source file, series name, asset class and region
+                   "SA property", "LCL", "FTSE/JSE SA Listed Property", "Equity", "Local") # one asset, with its label, source file, series name, asset class and region
 Bond_Rets <- Bond_TRI_Calc(Bond_Yields, Bond_Sel = c("US_10Yr", "EURO_10Yr", "UK_10Yr"), Maturity = 10) # monthly bond returns built from yields, explained in the next section
 Q4_End <- lubridate::ymd(20260930) # the last month in the data
 Asset_Rets <- Asset_Returns_Build(Q4_Meta, MSCI, Commods, Bond_Rets, Idx_Daily, LCL_Yield_Proxies) %>% filter(date <= Q4_End) # monthly returns for every asset

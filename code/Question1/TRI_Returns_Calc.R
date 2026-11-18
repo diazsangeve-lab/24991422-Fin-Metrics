@@ -1,11 +1,11 @@
 # Turns a tidy total return index (TRI) data frame into daily simple and log returns per series.
-TRI_Returns_Calc <- function(df, Start_Date = lubridate::ymd(20150101)){
+TRI_Returns_Calc <- function(df, Start_Date = lubridate::ymd(20150101)){ # define TRI_Returns_Calc, with inputs df and Start_Date
 
     if( !"date" %in% names(df)) stop("... for TRI_Returns_Calc to work, provide a date column called 'date'") # stop early if there is no date column
     if( !"Name" %in% names(df)) stop("... for TRI_Returns_Calc to work, provide an id column called 'Name'") # stop early if there is no series name column
     if( !"TRI" %in% names(df)) stop("... for TRI_Returns_Calc to work, provide a price column called 'TRI'") # stop early if there is no index level column
 
-    df %>%
+    df %>% # start from the input data
         arrange(date) %>% # order by date, as lags are used below
         group_by(Name) %>% # calculate returns separately for each series
         mutate(Returns = TRI / lag(TRI) - 1) %>% # simple return, used for anything that is added across assets

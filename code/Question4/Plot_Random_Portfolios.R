@@ -1,5 +1,5 @@
 # Plots a cloud of random portfolios that satisfy the mandate, coloured by return per unit of risk, beneath the efficient frontier and the four portfolio rules.
-Plot_Random_Portfolios <- function(Rp, Fr, W, Pal, Title = "Random Portfolios Within the Mandate", Subtitle = "", Caption = "Note:\nCalculation own"){
+Plot_Random_Portfolios <- function(Rp, Fr, W, Pal, Title = "Random Portfolios Within the Mandate", Subtitle = "", Caption = "Note:\nCalculation own"){ # define Plot_Random_Portfolios, with inputs Rp, Fr, W and Pal, plus the title, subtitle and caption text
 
     Last <- max(Fr$Frontiers$date) # the latest rebalance date
     Front <- Fr$Frontiers %>% filter(date == Last, Frontier == "Within the mandate") # the mandate frontier on that date

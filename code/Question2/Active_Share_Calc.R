@@ -1,11 +1,11 @@
 # Calculates the active share of each index relative to a benchmark on every month end, as half the sum of absolute weight differences.
-Active_Share_Calc <- function(Holdings, BM = "Capped SWIX"){
+Active_Share_Calc <- function(Holdings, BM = "Capped SWIX"){ # define Active_Share_Calc, with inputs Holdings and BM
 
     if( !BM %in% unique(as.character(Holdings$Fund)) ) stop(glue::glue("... {BM} is not one of the indexes in the holdings provided")) # stop early if the benchmark is missing
 
     BM_W <- Holdings %>% filter(Fund == BM) %>% select(date, Tickers, BM_Weight = Weight) # the benchmark weights
 
-    Holdings %>%
+    Holdings %>% # start from the holdings
         filter(Fund != BM) %>% # every index other than the benchmark
         select(Fund, date, Tickers, Weight) %>% # keep only what the calculation needs
         group_split(Fund) %>% # treat each index on its own

@@ -1,5 +1,5 @@
 # Estimates the covariance matrix and expected returns from a window of monthly returns in which some assets have shorter histories, shrinking correlations towards their average and means towards their grand mean for stability.
-Cov_Mu_Estimate <- function(R, Cor_Shrink = 0.25, Mu_Shrink = 0.5){
+Cov_Mu_Estimate <- function(R, Cor_Shrink = 0.25, Mu_Shrink = 0.5){ # define Cov_Mu_Estimate, with inputs R, Cor_Shrink and Mu_Shrink
 
     # For stepping through uncomment:
     # R <- R_Window ; Cor_Shrink <- 0.25 ; Mu_Shrink <- 0.5

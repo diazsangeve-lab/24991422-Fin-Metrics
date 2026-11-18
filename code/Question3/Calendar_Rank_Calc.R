@@ -1,7 +1,7 @@
 # Calculates calendar year returns for every fund and the share of peers the client's fund beat in each year, treating the last incomplete year as year to date.
-Calendar_Rank_Calc <- function(df, Fund_Label = "ABC Fund"){
+Calendar_Rank_Calc <- function(df, Fund_Label = "ABC Fund"){ # define Calendar_Rank_Calc, with inputs df and Fund_Label
 
-    df %>%
+    df %>% # start from the input data
         mutate(Year = lubridate::year(date)) %>% # the calendar year of each month
         group_by(Year) %>% # work year by year
         mutate(Months_Needed = n_distinct(lubridate::month(date))) %>% # the months that exist in the data for that year, twelve except in the final year
@@ -15,7 +15,7 @@ Calendar_Rank_Calc <- function(df, Fund_Label = "ABC Fund"){
                   Pct = mean(Ret[Group == "Peer"] < Fund_Ret), # the share of peers the fund beat
                   N_Peers = sum(Group == "Peer"), # the number of peers ranked
                   YTD = dplyr::first(Months_Needed) < 12, # whether the year is incomplete
-                  .groups = "drop") %>%
+                  .groups = "drop") %>% # drop the grouping once the summary is done
         mutate(Quartile = cut(Pct, breaks = c(-Inf, 0.25, 0.5, 0.75, Inf), labels = c("Bottom quartile", "Third quartile", "Second quartile", "Top quartile"))) # the quartile the fund finished in
 
 }

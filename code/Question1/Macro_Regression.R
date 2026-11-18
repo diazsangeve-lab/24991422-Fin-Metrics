@@ -1,5 +1,5 @@
 # Regresses a monthly series on standardised macro variables and returns tidy coefficients with Newey-West standard errors, which allow for autocorrelation in overlapping monthly data.
-Macro_Regression <- function(df, Y, X_Vars, Lag = 3, Label = Y){
+Macro_Regression <- function(df, Y, X_Vars, Lag = 3, Label = Y){ # define Macro_Regression, with inputs df, Y, X_Vars, Lag and Label
 
     # For stepping through uncomment:
     # df <- Macro_Panel ; Y <- "Dispersion_W" ; X_Vars <- c("VIX", "MOVE") ; Lag <- 3

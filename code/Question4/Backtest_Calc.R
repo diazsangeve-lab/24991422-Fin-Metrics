@@ -1,5 +1,5 @@
 # Calculates the monthly returns of each portfolio rule from its rebalance weights, letting weights drift between quarterly rebalances, and the turnover on each rebalance date.
-Backtest_Calc <- function(R_Long, Weights){
+Backtest_Calc <- function(R_Long, Weights){ # define Backtest_Calc, with inputs R_Long and Weights
 
     R_xts <- R_Long %>% select(date, Asset, Returns) %>% tbl2xts::tbl_xts(cols_to_xts = Returns, spread_by = Asset, Colnames_Exact = T) # wide monthly returns
     R_xts[is.na(R_xts)] <- 0 # a missing return only occurs for assets with no weight, so zero is harmless
@@ -14,7 +14,7 @@ Backtest_Calc <- function(R_Long, Weights){
         Turn <- Weights %>% filter(Strategy == s) %>% left_join(EOP, by = c("date", "Asset")) %>% group_by(date) %>% summarise(Turnover = 0.5 * sum(abs(Weight - coalesce(Drift, 0))), .groups = "drop") %>% filter(date > min(date)) # half the absolute change from drifted to new weights
 
         list(Returns = Port$returns %>% tbl2xts::xts_tbl() %>% rename(Returns = 2) %>% mutate(Strategy = s), Turnover = Turn %>% mutate(Strategy = s)) # the two outputs for this rule
-    }) %>%
+    }) %>% # close the inner function and pass its results on
         transpose() %>% # group the outputs by type
         map(bind_rows) # stack the rules
 

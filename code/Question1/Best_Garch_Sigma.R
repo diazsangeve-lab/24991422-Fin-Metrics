@@ -1,21 +1,21 @@
 # Fits several GARCH specifications to one series, keeps the one with the lowest AIC, and returns its conditional volatility.
-Best_Garch_Sigma <- function(df, Series, Models = c("sGARCH", "gjrGARCH", "eGARCH", "apARCH"), Ann = 252){
+Best_Garch_Sigma <- function(df, Series, Models = c("sGARCH", "gjrGARCH", "eGARCH", "apARCH"), Ann = 252){ # define Best_Garch_Sigma, with inputs df, Series, Models and Ann
 
     # For stepping through uncomment:
     # Series <- "Capped SWIX"
 
     if( !Series %in% unique(df$Name) ) stop(glue::glue("... {Series} is not a Name in the data frame provided")) # stop early if the series does not exist
 
-    xts_rtn <-
-        df %>%
+    xts_rtn <- # build xts_rtn through the steps below
+        df %>% # start from the input data
         filter(Name == Series) %>% # keep only the chosen series
         filter(!is.na(dlogret)) %>% # the model cannot handle missing returns
         tbl2xts::tbl_xts(cols_to_xts = dlogret) # rugarch needs the data in xts format
 
     Safe_Fit <- purrr::safely(rugarch::ugarchfit) # a version of the fitting function that does not break the loop if one model fails to converge
 
-    Fit_List <-
-        Models %>%
+    Fit_List <- # build Fit_List through the steps below
+        Models %>% # start from Models
         purrr::set_names() %>% # name each list entry after its model
         map(~Safe_Fit(spec = rugarch::ugarchspec(variance.model = list(model = .x, garchOrder = c(1, 1)), # the variance equation, with one lag of the shock and one lag of the variance
                                                  mean.model = list(armaOrder = c(1, 0), include.mean = TRUE), # an AR(1) mean equation, to clean out first order persistence in returns
